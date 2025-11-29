@@ -636,11 +636,12 @@ const formatEnglishTextNoOrphan = (text) => {
 
 // 智能斷行 (含孤兒控制)
 // 改良版斷行功能：支援長單字自動切斷加連字號
+// 斷行功能 V2：修復單一長字不換行的 Bug
 const getLines = (ctx, text, maxWidth) => {
-    // 判斷是否為英文 (只有英文需要處理連字號)
+    // 判斷是否為英文
     const isEnglish = /^[a-zA-Z\s.,?!']+$/.test(text);
-    
-    // 如果不是英文 (是中文)，維持原本簡單的邏輯
+
+    // 中文邏輯 (保持不變)
     if (!isEnglish) {
         const words = text.split('');
         let lines = [];
@@ -659,55 +660,65 @@ const getLines = (ctx, text, maxWidth) => {
         return lines;
     }
 
-    // --- 以下是英文的特殊處理邏輯 ---
+    // --- 修正後的英文邏輯 (V2) ---
     const words = text.split(' ');
     let lines = [];
-    let currentLine = words[0];
+    let currentLine = ""; 
 
-    for (let i = 1; i < words.length; i++) {
-        const word = words[i];
-        const width = ctx.measureText(currentLine + " " + word).width;
-
-        if (width < maxWidth) {
-            // 如果加了這個字還沒滿，就加進去
-            currentLine += " " + word;
-        } else {
-            // 如果加了這個字會爆掉，先檢查這個字本身是不是「巨無霸單字」
-            const wordWidth = ctx.measureText(word).width;
-            
-            if (wordWidth > maxWidth) {
-                // 狀況一：這個字本身就比一行還寬 (例如 aaaaa...) -> 需要切斷
-                // 1. 先把目前這一行存起來
+    for (let i = 0; i < words.length; i++) {
+        let word = words[i];
+        
+        // 1. 先處理這個字本身是否超級長 (長到超過一行)
+        const wordWidth = ctx.measureText(word).width;
+        
+        if (wordWidth > maxWidth) {
+            // 如果目前行有東西，先換行
+            if (currentLine !== "") {
                 lines.push(currentLine);
                 currentLine = "";
+            }
 
-                // 2. 開始切分這個巨無霸單字
-                let remainingWord = word;
-                while (ctx.measureText(remainingWord).width > maxWidth) {
-                    // 找出這一行能塞多少字元
-                    let splitIndex = 0;
-                    let tempStr = "";
-                    // 預留一點寬度給連字號 (-)
-                    while (splitIndex < remainingWord.length && ctx.measureText(tempStr + remainingWord[splitIndex] + "-").width < maxWidth) {
-                        tempStr += remainingWord[splitIndex];
+            // 切割這個長單字
+            let remainingWord = word;
+            while (ctx.measureText(remainingWord).width > maxWidth) {
+                let splitIndex = 0;
+                let tempStr = "";
+                // 尋找切割點
+                while (splitIndex < remainingWord.length) {
+                    let char = remainingWord[splitIndex];
+                    // 預留連字號的寬度
+                    if (ctx.measureText(tempStr + char + "-").width < maxWidth) {
+                        tempStr += char;
                         splitIndex++;
+                    } else {
+                        break;
                     }
-                    
-                    // 存入切斷的一行 (加上連字號)
-                    lines.push(tempStr + "-");
-                    // 剩下的字繼續處理
-                    remainingWord = remainingWord.substring(splitIndex);
                 }
-                // 剩下的部分變成新的一行
-                currentLine = remainingWord;
+                // 存入切割的一行 (加上連字號)
+                lines.push(tempStr + "-");
+                remainingWord = remainingWord.substring(splitIndex);
+            }
+            // 剩下的部分變成新的 currentLine
+            currentLine = remainingWord;
+            
+        } else {
+            // 2. 字是正常的長度
+            const space = currentLine === "" ? "" : " ";
+            const lineWidth = ctx.measureText(currentLine + space + word).width;
+            
+            if (lineWidth < maxWidth) {
+                currentLine += space + word;
             } else {
-                // 狀況二：這個字是正常的，只是這行滿了 -> 把字移到下一行就好
                 lines.push(currentLine);
                 currentLine = word;
             }
         }
     }
-    lines.push(currentLine);
+    // 把最後剩下的也加進去
+    if (currentLine !== "") {
+        lines.push(currentLine);
+    }
+    
     return lines;
 };
 
@@ -1275,3 +1286,4 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+

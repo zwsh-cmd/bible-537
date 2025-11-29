@@ -616,85 +616,78 @@ const formatDateTime = (dateInput) => {
 // 文字排版優化 V10：詞組強力膠 (防止關鍵詞被切斷)
 // 排版優化 V11：海量詞庫 + 標點黏著 + 智慧斷行
 // 排版優化 V12：用戶指定詞庫擴充 + 嚴格避頭點 (標點不置首)
+// 排版優化 V14：雙層防護 (語意區塊排版 + 關鍵詞庫保護)
 const formatTextNoOrphan = (text) => {
     if (!text || typeof text !== 'string') return text;
 
-    // 1. 定義「死都要黏在一起」的關鍵詞
+    // --- 第 1 層：定義不想被切斷的「關鍵詞」 (微觀保護) ---
     const keepTogetherWords = [
-        // --- V12 您指定補充的詞彙 ---
-        "腳前的燈", "充充滿滿",
+        // 用戶指定補充
         "定罪", "完全", "寶座", "因此", "跌倒", "同去", "清潔", "臨近", 
-        "為寶", "為尊", "訓誨", "犯罪", "過失", "尋找", "聚集", "欺壓", "患難",
+        "為寶", "為尊", "訓誨", "充充滿滿", "犯罪", "過失", "尋找", "聚集", 
+        "欺壓", "患難", "腳前的燈", "路上的光",
         
-        // --- 原有常用詞庫 (保持排版美觀) ---
+        // 神格與重要名詞
         "耶和華", "耶穌", "基督", "聖靈", "上帝", "主耶穌", "父神",
-        "十字架", "救世主", "彌賽亞", "創造主", "全能者", "至高者",
-        "以色列", "耶路撒冷", "法利賽人", "撒都該人", "外邦人", "門徒", "使徒",
-        "先知", "祭司", "君王", "弟兄", "姊妹", "兒女", "百姓", "子民",
-        "星宿", "數目", "名字", "眼淚", "死亡", "悲哀", "哭號", "疼痛",
+        "十字架", "救世主", "彌賽亞", "全能者", "至高者", "以色列", "耶路撒冷",
+        "法利賽人", "撒都該人", "外邦人", "門徒", "使徒", "先知", "祭司",
+        
+        // 重要詞彙 (雙字/四字)
         "自由", "真理", "生命", "道路", "恩典", "慈愛", "憐憫", "榮耀",
         "智慧", "知識", "聰明", "能力", "權柄", "國度", "旨意", "試探",
-        "困苦", "逼迫", "危險", "刀劍", "網羅", "陷阱", "盾牌",
-        "山寨", "避難所", "磐石", "高臺", "活水", "靈糧", "聖殿", "教會",
-        "單單", "僅僅", "惟獨", "常常", "永遠", "世世", "從前", "如今", "將來",
+        "單單", "僅僅", "惟獨", "常常", "永遠", "世世", "從前", "如今",
         "盡心", "盡性", "盡意", "盡力", "專心", "誠實", "謙卑", "溫柔",
         "喜樂", "平安", "忍耐", "良善", "信實", "節制", "聖潔", "公義",
         "剛強", "壯膽", "懼怕", "驚惶", "憂慮", "膽怯", "軟弱", "疲乏",
         "稱頌", "敬畏", "仰望", "等候", "尋求", "倚靠", "感謝", "讚美",
-        "事奉", "跟隨", "順服", "聽從", "遵守", "相信", "信靠", "交託",
         "拯救", "保護", "引導", "扶持", "堅固", "遮蔽", "醫治", "赦免",
-        "洗淨", "充滿", "澆灌", "運行", "感動", "啟示", "光照", "鑒察",
-        "行道", "聽道", "欺哄", "論斷", "饒恕", "相愛", "和睦", "同心",
-        "數點", "稱呼", "擦去", "過去", "留下", "賜給", "所賜", "不像",
-        "不要", "不可", "不能", "不會", "不敢", "不致", "不至", "必定",
+        "眼淚", "死亡", "悲哀", "哭號", "疼痛", "復活", "永生", "得勝",
         "你們", "我們", "他們", "自己", "一切", "所有", "各樣", "諸般",
         "因為", "所以", "雖然", "但是", "只是", "如果", "若是", "無論",
         "甚至", "並且", "而且", "以及", "還是", "或者"
     ];
 
-    // 2. 標點符號清單 (避頭點規則用)
-    const punctuations = "，。、？！：；」』”’…,.";
-    
-    // 3. 排序 (長詞優先匹配) 並製作正則
+    // 建立正則表達式 (按長度排序，確保長詞優先)
     keepTogetherWords.sort((a, b) => b.length - a.length);
-    const regex = new RegExp(`(${keepTogetherWords.join("|")})`, "g");
+    const wordRegex = new RegExp(`(${keepTogetherWords.join("|")})`, "g");
 
-    // 4. 切割並重組
-    const parts = text.split(regex);
+    // 輔助函式：處理單一句子內的「關鍵詞保護」
+    const processSentence = (sentence) => {
+        if (!sentence) return null;
+        // 把句子裡的關鍵詞切出來，包上 span (nowrap)
+        const parts = sentence.split(wordRegex);
+        return parts.map((part, i) => {
+            if (keepTogetherWords.includes(part)) {
+                return <span key={i} className="whitespace-nowrap">{part}</span>;
+            }
+            return part;
+        });
+    };
 
-    return (
-        <>
-            {parts.map((part, index) => {
-                // A. 如果是關鍵詞，強制不換行 (用 inline-block 保持完整性)
-                if (keepTogetherWords.includes(part)) {
-                    return <span key={index} className="whitespace-nowrap inline-block">{part}</span>;
-                }
-                
-                // B. 處理普通文字中的「避頭點」
-                // 邏輯：檢查每個字的「下一個字」是不是標點？
-                // 如果是，就把「這個字 + 標點」黏在一起，視為一個不可分割的單位。
-                const chars = part.split('');
-                const result = [];
-                for (let i = 0; i < chars.length; i++) {
-                    const char = chars[i];
-                    const nextChar = chars[i+1];
-                    
-                    if (nextChar && punctuations.includes(nextChar)) {
-                        // 發現標點！啟動強力膠，把 當前字(char) 和 標點(nextChar) 黏死
-                        result.push(<span key={`${index}-${i}`} className="whitespace-nowrap">{char}{nextChar}</span>);
-                        i++; // 跳過下一個 (因為已經被黏過來了)
-                    } else if (punctuations.includes(char)) {
-                        // 防禦性處理：如果當前字本身就是標點 (通常不會單獨跑到這，除非在開頭)
-                        result.push(<span key={`${index}-${i}`}>{char}</span>);
-                    } else {
-                        // 普通字，允許自由換行
-                        result.push(char);
-                    }
-                }
-                return result;
-            })}
-        </>
-    );
+    // --- 第 2 層：語意分段 (宏觀排版) ---
+    // 先用標點符號將經文切成多個「語意積木」
+    const rawParts = text.split(/([，；。？！：,.?!;:])/);
+    const blocks = [];
+
+    // 重新組裝：把「文字」跟它後面的「標點」黏在一起
+    for (let i = 0; i < rawParts.length; i += 2) {
+        const sentenceText = rawParts[i];
+        const mark = rawParts[i + 1] || ""; 
+        
+        if (sentenceText || mark) {
+            // 這裡做雙層處理：
+            // 1. 處理句子內部的關鍵詞 (processSentence)
+            // 2. 把標點符號也包在 nowrap 裡，確保標點不折行
+            blocks.push(
+                <span key={i} className="inline-block">
+                    {processSentence(sentenceText)}
+                    <span className="whitespace-nowrap">{mark}</span>
+                </span>
+            );
+        }
+    }
+
+    return <>{blocks}</>;
 };
 
 const formatEnglishTextNoOrphan = (text) => {
@@ -1414,6 +1407,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

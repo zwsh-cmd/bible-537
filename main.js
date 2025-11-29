@@ -620,11 +620,16 @@ const formatDateTime = (dateInput) => {
 // 排版優化 V15：詩歌分行排版 (遇標點強制換行 + 關鍵詞保護)
 // 排版優化 V16：彈性語意排版 (能塞就塞 + 省略號保護 + 時間詞庫)
 // 排版優化 V17：極致美學 (強標點換行 + 弱標點彈性 + 詞庫擴充)
+// 排版優化 V18：引號黏著 + 「的」字防孤兒 + 詞庫擴充
 const formatTextNoOrphan = (text) => {
     if (!text || typeof text !== 'string') return text;
 
-    // 1. 定義詞庫 (包含 V16 + V17 新增)
+    // 1. 定義詞庫 (包含 V17 + V18 新增)
     const keepTogetherWords = [
+        // V18 新增
+        "無比", "的水", "陳明", "所求", "景況", "善良", "純全", "喜悅", "緣故",
+        "世界", "脫離", "黑暗", "權勢", "愛子", "國度", "天國",
+        
         // V17 新增
         "仁愛", "潔淨", "聲音", "愚昧", "聰明", "通達", "力量", "聖潔", "憐憫",
         "恩慈", "謙虛", "溫柔", "忍耐",
@@ -654,24 +659,35 @@ const formatTextNoOrphan = (text) => {
     keepTogetherWords.sort((a, b) => b.length - a.length);
     const wordRegex = new RegExp(`(${keepTogetherWords.join("|")})`, "g");
 
-    // 3. 第一層切割：依據「強標點」強制換行
-    // 強標點：句號、驚嘆號、問號、冒號 (這些符號後面一定要換行)
-    // 弱標點：逗號、分號 (這些符號後面不強制換行，除非空間不夠)
-    const strongParts = text.split(/([。？！：?!:])/);
+    // 3. 輔助函式：處理「的」字黏著 (X的 -> 視為一體)
+    const processDe = (str) => {
+        if (!str) return null;
+        // 將 "任意字+的" 切割出來 (例如 "紅的" "我的")
+        const parts = str.split(/(.{1}的)/);
+        return parts.map((p, i) => {
+            // 如果這個片段結尾是「的」，就包起來不換行
+            if (p.length > 1 && p.endsWith('的')) {
+                return <span key={i} className="whitespace-nowrap">{p}</span>;
+            }
+            return p;
+        });
+    };
+
+    // 4. 第一層切割：依據「強標點」強制換行
+    // V18重點：正則加入 [”’」』]? 表示標點後面「可能」跟著一個引號，要一起切
+    const strongParts = text.split(/([。？！：?!:][”’」』]?)/);
     const lines = [];
 
-    // 先組合成「強制換行」的段落
     for (let i = 0; i < strongParts.length; i += 2) {
         const segment = strongParts[i];
         const mark = strongParts[i + 1] || "";
         
         if (segment || mark) {
-            // 在每個強制換行的段落內，再處理「弱標點」和「關鍵詞」
             const fullLine = segment + mark;
             
-            // 4. 第二層切割：依據「弱標點」切成彈性積木
-            // V16 的邏輯：每個積木用 inline-block，讓瀏覽器決定要不要並排
-            const weakParts = fullLine.split(/(\.{3}|[，；,;…])/); // 包含省略號
+            // 5. 第二層切割：依據「弱標點」切成彈性積木
+            // V18重點：弱標點也加入引號偵測
+            const weakParts = fullLine.split(/(\.{3}|[，；,;…][”’」』]?)/);
             const blocks = [];
 
             for (let j = 0; j < weakParts.length; j += 2) {
@@ -679,16 +695,17 @@ const formatTextNoOrphan = (text) => {
                 const subMark = weakParts[j + 1] || "";
                 
                 if (subText || subMark) {
-                    // 5. 第三層處理：關鍵詞保護 (字內不換行)
+                    // 6. 第三層處理：關鍵詞保護 + 「的」字處理
                     const protectedParts = subText.split(wordRegex);
                     const content = protectedParts.map((part, k) => {
+                        // 如果是關鍵詞，直接包
                         if (keepTogetherWords.includes(part)) {
                             return <span key={k} className="whitespace-nowrap">{part}</span>;
                         }
-                        return part;
+                        // 如果是普通文字，再檢查有沒有「的」
+                        return <span key={k}>{processDe(part)}</span>;
                     });
 
-                    // 每個積木包含文字和後面的弱標點
                     blocks.push(
                         <span key={j} className="inline-block">
                             {content}
@@ -698,7 +715,6 @@ const formatTextNoOrphan = (text) => {
                 }
             }
             
-            // 將這一組積木放入一個 div (代表強制換行的一大段)
             lines.push(
                 <div key={i} className="text-center">
                     {blocks}
@@ -1427,6 +1443,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

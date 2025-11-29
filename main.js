@@ -618,12 +618,16 @@ const formatDateTime = (dateInput) => {
 // 排版優化 V12：用戶指定詞庫擴充 + 嚴格避頭點 (標點不置首)
 // 排版優化 V14：雙層防護 (語意區塊排版 + 關鍵詞庫保護)
 // 排版優化 V15：詩歌分行排版 (遇標點強制換行 + 關鍵詞保護)
+// 排版優化 V16：彈性語意排版 (能塞就塞 + 省略號保護 + 時間詞庫)
 const formatTextNoOrphan = (text) => {
     if (!text || typeof text !== 'string') return text;
 
-    // 1. 定義不想被切斷的關鍵詞 (詞庫)
+    // 1. 定義不想被切斷的關鍵詞 (詞庫擴充)
     const keepTogetherWords = [
-        // 您的補充詞彙
+        // V16 新增時間詞
+        "昨日", "今日", "明日",
+        
+        // 用戶指定補充
         "定罪", "完全", "寶座", "因此", "跌倒", "同去", "清潔", "臨近", 
         "為寶", "為尊", "訓誨", "充充滿滿", "犯罪", "過失", "尋找", "聚集", 
         "欺壓", "患難", "腳前的燈", "路上的光",
@@ -636,7 +640,7 @@ const formatTextNoOrphan = (text) => {
         // 常用詞彙
         "自由", "真理", "生命", "道路", "恩典", "慈愛", "憐憫", "榮耀",
         "智慧", "知識", "聰明", "能力", "權柄", "國度", "旨意", "試探",
-        "單單", "僅僅", "惟獨", "常常", "永遠", "世世", "從前", "如今",
+        "單單", "僅僅", "惟獨", "常常", "永遠", "世世", "從前", "如今", "將來",
         "盡心", "盡性", "盡意", "盡力", "專心", "誠實", "謙卑", "溫柔",
         "喜樂", "平安", "忍耐", "良善", "信實", "節制", "聖潔", "公義",
         "剛強", "壯膽", "懼怕", "驚惶", "憂慮", "膽怯", "軟弱", "疲乏",
@@ -652,26 +656,29 @@ const formatTextNoOrphan = (text) => {
     keepTogetherWords.sort((a, b) => b.length - a.length);
     const wordRegex = new RegExp(`(${keepTogetherWords.join("|")})`, "g");
 
-    // 3. 第一層切割：依據標點符號，把經文切成「一行一行」
-    // 使用 split 保留標點，讓標點跟著上一句
-    const rawParts = text.split(/([，；。？！：,.?!;:])/);
-    const lines = [];
+    // 3. 第一層切割：依據標點符號切分成「語意積木」
+    // V16 重點：加入 \.{3} 以識別 '...' 為單一符號，不讓點點分離
+    // 邏輯：(三個點) 或 (單一標點符號) 都是切割點
+    const rawParts = text.split(/(\.{3}|[，；。？！：,.?!;:…])/);
+    const blocks = [];
 
+    // 重新組裝：文字 + 標點 = 一個不可分割的積木
     for (let i = 0; i < rawParts.length; i += 2) {
         const sentenceText = rawParts[i];
         const mark = rawParts[i + 1] || "";
         
         if (sentenceText || mark) {
-            lines.push(sentenceText + mark);
+            blocks.push({ text: sentenceText, mark: mark });
         }
     }
 
-    // 4. 輸出：使用 Flex Column 讓每一句都獨佔一行 (垂直排列)
+    // 4. 輸出：使用 inline-block + normal flow
+    // 讓瀏覽器自己決定：如果一行塞得下兩個積木，就塞；塞不下才折行
     return (
-        <span className="flex flex-col items-center gap-1">
-            {lines.map((line, index) => {
-                // 第二層處理：在這一行裡面，保護關鍵詞不被切斷
-                const parts = line.split(wordRegex);
+        <span className="block text-center w-full">
+            {blocks.map((block, index) => {
+                // 第二層處理：在積木內部保護關鍵詞
+                const parts = block.text.split(wordRegex);
                 const content = parts.map((part, i) => {
                     if (keepTogetherWords.includes(part)) {
                         return <span key={i} className="whitespace-nowrap">{part}</span>;
@@ -680,8 +687,9 @@ const formatTextNoOrphan = (text) => {
                 });
 
                 return (
-                    <span key={index} className="text-center block">
+                    <span key={index} className="inline-block">
                         {content}
+                        <span className="whitespace-nowrap">{block.mark}</span>
                     </span>
                 );
             })}
@@ -1406,6 +1414,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

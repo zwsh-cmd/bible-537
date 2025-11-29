@@ -642,10 +642,9 @@ const formatEnglishTextNoOrphan = (text) => {
 // 排版邏輯 V5：針對圖片生成的強制平衡算法 (解決頭重腳輕)
 // 排版邏輯 V6：語意優先 + 智慧平衡 (解決標點符號被強制切斷的問題)
 // 排版邏輯 V7：修復英文標點誤判 (解決分號導致斷字問題)
-// 排版邏輯 V7 (最終確認版)：智慧語言偵測 + 平衡排版 + 語意優先
 const getLines = (ctx, text, maxWidth) => {
-    // 0. 全局判斷語言：只要內容「沒有中文字」，就全部當作英文處理！
-    // 這樣可以支援所有的標點符號 (分號; 冒號: 括號() 等)，不會再誤判成中文
+    // 0. 全局判斷語言：只要內容「不包含中文字」，就全部當作英文處理
+    // 這樣可以支援所有的標點符號 (分號、冒號、括號等)，不會再誤判成中文
     const hasChinese = /[\u4e00-\u9fa5]/.test(text);
     const isEnglish = !hasChinese;
 
@@ -683,10 +682,9 @@ const getLines = (ctx, text, maxWidth) => {
         for (let i = 0; i < words.length; i++) {
             let word = words[i];
             const wordWidth = ctx.measureText(word).width;
-            
-            // 處理超長單字 (例如 aaaaaa...)
             if (wordWidth > limitWidth) {
                 if (currentLine !== "") { lines.push(currentLine); currentLine = ""; }
+                // 超長單字切割
                 let remainingWord = word;
                 while (ctx.measureText(remainingWord).width > limitWidth) {
                     let splitIndex = 0; let tempStr = "";
@@ -701,7 +699,6 @@ const getLines = (ctx, text, maxWidth) => {
                 }
                 currentLine = remainingWord;
             } else {
-                // 一般單字處理
                 const space = currentLine === "" ? "" : " ";
                 if (ctx.measureText(currentLine + space + word).width < limitWidth) {
                     currentLine += space + word;
@@ -714,43 +711,6 @@ const getLines = (ctx, text, maxWidth) => {
         if (currentLine !== "") lines.push(currentLine);
         return lines;
     };
-
-    // 2. 智慧平衡層 (讓排版接近主頁的美感)
-    
-    // 步驟 A: 自然排版
-    const naturalLines = computeLines(maxWidth);
-
-    if (naturalLines.length < 2 || naturalLines.length > 4) {
-        return naturalLines;
-    }
-
-    // 步驟 B: 如果是中文，且結尾是標點，就保留自然排版 (語意優先)
-    if (!isEnglish) {
-        const firstLine = naturalLines[0];
-        const lastChar = firstLine.slice(-1);
-        const punctuation = "，。、？！：；」』”’…,.";
-        if (punctuation.includes(lastChar)) {
-            return naturalLines;
-        }
-    }
-
-    // 步驟 C: 嘗試平衡排版 (讓兩行長度接近)
-    const totalWidth = ctx.measureText(text).width;
-    const averageWidth = totalWidth / naturalLines.length;
-    const tryWidth = averageWidth * 1.1; 
-    
-    const balancedLines = computeLines(tryWidth);
-
-    if (balancedLines.length === naturalLines.length) {
-        const lastLine = balancedLines[balancedLines.length - 1];
-        if (!isEnglish && lastLine.length < 2) {
-             return naturalLines; 
-        }
-        return balancedLines; 
-    }
-
-    return naturalLines; 
-};
 
     // 2. 智慧決策層 (保持 V6 的語意優先邏輯)
     
@@ -1353,4 +1313,11 @@ function GodIsWithYouApp() {
 
 // 渲染應用程式
 const root = createRoot(document.getElementById('root'));
+
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
+
+
+
+
+

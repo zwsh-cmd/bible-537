@@ -641,16 +641,12 @@ const formatEnglishTextNoOrphan = (text) => {
 // 排版邏輯 V4：文字平衡 + 孤兒字控制 + 避頭點 (最終完美版)
 // 排版邏輯 V5：針對圖片生成的強制平衡算法 (解決頭重腳輕)
 // 排版邏輯 V6：語意優先 + 智慧平衡 (解決標點符號被強制切斷的問題)
-// 排版邏輯 V7：修復英文標點誤判 (解決分號導致斷字問題)
 const getLines = (ctx, text, maxWidth) => {
-    // 0. 全局判斷語言：只要內容「不包含中文字」，就全部當作英文處理
-    // 這樣可以支援所有的標點符號 (分號、冒號、括號等)，不會再誤判成中文
-    const hasChinese = /[\u4e00-\u9fa5]/.test(text);
-    const isEnglish = !hasChinese;
-
-    // 1. 基礎切分功能 (保持 V6 的核心邏輯)
+    // 1. 基礎切分功能 (保持 V5 的核心邏輯：含中英文處理、避頭點、長單字切割)
     const computeLines = (limitWidth) => {
-        // === 中文邏輯 (逐字處理 + 避頭點) ===
+        const isEnglish = /^[a-zA-Z\s.,?!']+$/.test(text);
+
+        // 中文邏輯
         if (!isEnglish) {
             const words = text.split('');
             let lines = [];
@@ -675,7 +671,7 @@ const getLines = (ctx, text, maxWidth) => {
             return lines;
         }
 
-        // === 英文邏輯 (逐詞處理 + 空白鍵分隔) ===
+        // 英文邏輯
         const words = text.split(' ');
         let lines = [];
         let currentLine = ""; 
@@ -684,7 +680,6 @@ const getLines = (ctx, text, maxWidth) => {
             const wordWidth = ctx.measureText(word).width;
             if (wordWidth > limitWidth) {
                 if (currentLine !== "") { lines.push(currentLine); currentLine = ""; }
-                // 超長單字切割
                 let remainingWord = word;
                 while (ctx.measureText(remainingWord).width > limitWidth) {
                     let splitIndex = 0; let tempStr = "";
@@ -712,43 +707,47 @@ const getLines = (ctx, text, maxWidth) => {
         return lines;
     };
 
-    // 2. 智慧決策層 (保持 V6 的語意優先邏輯)
+    // === V6 智慧決策層 ===
     
-    // 步驟 A: 自然排版
+    // 步驟 A: 先算「自然排版」 (盡量塞滿一行)
     const naturalLines = computeLines(maxWidth);
 
+    // 如果只有 1 行，或者行數很多，直接用自然排版
     if (naturalLines.length < 2 || naturalLines.length > 4) {
         return naturalLines;
     }
 
-    // 步驟 B: 檢查標點 (僅針對中文)
-    // 英文不需要這個檢查，因為英文按單字換行，不會有標點被斷在中間的問題
-    if (!isEnglish) {
-        const firstLine = naturalLines[0];
-        const lastChar = firstLine.slice(-1);
-        const punctuation = "，。、？！：；」』”’…,.";
-        if (punctuation.includes(lastChar)) {
-            return naturalLines;
-        }
+    // 步驟 B: 檢查自然排版是否「完美命中」標點符號
+    // 如果第一行的最後一個字是標點符號 (如：，。！)，代表語意完整
+    // 這種情況下，不要雞婆去平衡，直接保留這個完美的斷句
+    const firstLine = naturalLines[0];
+    const lastChar = firstLine.slice(-1);
+    const punctuation = "，。、？！：；」』”’…,.";
+    
+    if (punctuation.includes(lastChar)) {
+        return naturalLines; // 命中標點！直接回傳自然排版
     }
 
-    // 步驟 C: 平衡排版
+    // 步驟 C: 如果第一行斷在很奇怪的地方 (不是標點)，我們才嘗試「平衡排版」
+    // (這就是 V5 的邏輯：算出平均寬度，讓兩行一樣長)
     const totalWidth = ctx.measureText(text).width;
     const averageWidth = totalWidth / naturalLines.length;
-    const tryWidth = averageWidth * 1.1; 
+    const tryWidth = averageWidth * 1.1; // 給一點寬容度
     
     const balancedLines = computeLines(tryWidth);
 
+    // 驗收平衡結果
+    // 如果平衡後行數沒有變多，且最後一行不會太短，就採用平衡版
     if (balancedLines.length === naturalLines.length) {
         const lastLine = balancedLines[balancedLines.length - 1];
-        // 孤兒字檢查 (僅針對中文)
+        const isEnglish = /^[a-zA-Z\s.,?!']+$/.test(text);
         if (!isEnglish && lastLine.length < 2) {
-             return naturalLines; 
+             return naturalLines; // 平衡失敗(最後一行太短)，退回自然版
         }
-        return balancedLines; 
+        return balancedLines; // 平衡成功，採用平衡版
     }
 
-    return naturalLines; 
+    return naturalLines; // 平衡導致行數變多，放棄平衡，用回自然版
 };
 
 // 圖片生成邏輯 (支援動態高度與日記)
@@ -1315,7 +1314,6 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
-
 
 
 

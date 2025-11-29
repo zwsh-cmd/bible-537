@@ -619,82 +619,95 @@ const formatDateTime = (dateInput) => {
 // 排版優化 V14：雙層防護 (語意區塊排版 + 關鍵詞庫保護)
 // 排版優化 V15：詩歌分行排版 (遇標點強制換行 + 關鍵詞保護)
 // 排版優化 V16：彈性語意排版 (能塞就塞 + 省略號保護 + 時間詞庫)
+// 排版優化 V17：極致美學 (強標點換行 + 弱標點彈性 + 詞庫擴充)
 const formatTextNoOrphan = (text) => {
     if (!text || typeof text !== 'string') return text;
 
-    // 1. 定義不想被切斷的關鍵詞 (詞庫擴充)
+    // 1. 定義詞庫 (包含 V16 + V17 新增)
     const keepTogetherWords = [
-        // V16 新增時間詞
-        "昨日", "今日", "明日",
+        // V17 新增
+        "仁愛", "潔淨", "聲音", "愚昧", "聰明", "通達", "力量", "聖潔", "憐憫",
+        "恩慈", "謙虛", "溫柔", "忍耐",
         
-        // 用戶指定補充
-        "定罪", "完全", "寶座", "因此", "跌倒", "同去", "清潔", "臨近", 
-        "為寶", "為尊", "訓誨", "充充滿滿", "犯罪", "過失", "尋找", "聚集", 
-        "欺壓", "患難", "腳前的燈", "路上的光",
+        // V16 既有
+        "昨日", "今日", "明日", "定罪", "完全", "寶座", "因此", "跌倒", "同去", 
+        "清潔", "臨近", "為寶", "為尊", "訓誨", "充充滿滿", "犯罪", "過失", 
+        "尋找", "聚集", "欺壓", "患難", "腳前的燈", "路上的光",
         
-        // 常用神學/名詞
+        // 常用名詞與詞彙
         "耶和華", "耶穌", "基督", "聖靈", "上帝", "主耶穌", "父神",
         "十字架", "救世主", "彌賽亞", "全能者", "至高者", "以色列", "耶路撒冷",
         "法利賽人", "撒都該人", "外邦人", "門徒", "使徒", "先知", "祭司",
-        
-        // 常用詞彙
-        "自由", "真理", "生命", "道路", "恩典", "慈愛", "憐憫", "榮耀",
-        "智慧", "知識", "聰明", "能力", "權柄", "國度", "旨意", "試探",
-        "單單", "僅僅", "惟獨", "常常", "永遠", "世世", "從前", "如今", "將來",
-        "盡心", "盡性", "盡意", "盡力", "專心", "誠實", "謙卑", "溫柔",
-        "喜樂", "平安", "忍耐", "良善", "信實", "節制", "聖潔", "公義",
-        "剛強", "壯膽", "懼怕", "驚惶", "憂慮", "膽怯", "軟弱", "疲乏",
-        "稱頌", "敬畏", "仰望", "等候", "尋求", "倚靠", "感謝", "讚美",
-        "拯救", "保護", "引導", "扶持", "堅固", "遮蔽", "醫治", "赦免",
-        "眼淚", "死亡", "悲哀", "哭號", "疼痛", "復活", "永生", "得勝",
-        "你們", "我們", "他們", "自己", "一切", "所有", "各樣", "諸般",
-        "因為", "所以", "雖然", "但是", "只是", "如果", "若是", "無論",
-        "甚至", "並且", "而且", "以及", "還是", "或者"
+        "自由", "真理", "生命", "道路", "恩典", "慈愛", "榮耀", "智慧", "知識", 
+        "能力", "權柄", "國度", "旨意", "試探", "單單", "僅僅", "惟獨", "常常", 
+        "永遠", "世世", "從前", "如今", "盡心", "盡性", "盡意", "盡力", "專心", 
+        "誠實", "喜樂", "平安", "良善", "信實", "節制", "公義", "剛強", "壯膽", 
+        "懼怕", "驚惶", "憂慮", "膽怯", "軟弱", "疲乏", "稱頌", "敬畏", "仰望", 
+        "等候", "尋求", "倚靠", "感謝", "讚美", "拯救", "保護", "引導", "扶持", 
+        "堅固", "遮蔽", "醫治", "赦免", "眼淚", "死亡", "悲哀", "哭號", "疼痛", 
+        "復活", "永生", "得勝", "你們", "我們", "他們", "自己", "一切", "所有", 
+        "各樣", "諸般", "因為", "所以", "雖然", "但是", "只是", "如果", "若是", 
+        "無論", "甚至", "並且", "而且", "以及", "還是", "或者"
     ];
 
-    // 2. 製作關鍵詞保護的正則表達式
+    // 2. 製作關鍵詞正則
     keepTogetherWords.sort((a, b) => b.length - a.length);
     const wordRegex = new RegExp(`(${keepTogetherWords.join("|")})`, "g");
 
-    // 3. 第一層切割：依據標點符號切分成「語意積木」
-    // V16 重點：加入 \.{3} 以識別 '...' 為單一符號，不讓點點分離
-    // 邏輯：(三個點) 或 (單一標點符號) 都是切割點
-    const rawParts = text.split(/(\.{3}|[，；。？！：,.?!;:…])/);
-    const blocks = [];
+    // 3. 第一層切割：依據「強標點」強制換行
+    // 強標點：句號、驚嘆號、問號、冒號 (這些符號後面一定要換行)
+    // 弱標點：逗號、分號 (這些符號後面不強制換行，除非空間不夠)
+    const strongParts = text.split(/([。？！：?!:])/);
+    const lines = [];
 
-    // 重新組裝：文字 + 標點 = 一個不可分割的積木
-    for (let i = 0; i < rawParts.length; i += 2) {
-        const sentenceText = rawParts[i];
-        const mark = rawParts[i + 1] || "";
+    // 先組合成「強制換行」的段落
+    for (let i = 0; i < strongParts.length; i += 2) {
+        const segment = strongParts[i];
+        const mark = strongParts[i + 1] || "";
         
-        if (sentenceText || mark) {
-            blocks.push({ text: sentenceText, mark: mark });
+        if (segment || mark) {
+            // 在每個強制換行的段落內，再處理「弱標點」和「關鍵詞」
+            const fullLine = segment + mark;
+            
+            // 4. 第二層切割：依據「弱標點」切成彈性積木
+            // V16 的邏輯：每個積木用 inline-block，讓瀏覽器決定要不要並排
+            const weakParts = fullLine.split(/(\.{3}|[，；,;…])/); // 包含省略號
+            const blocks = [];
+
+            for (let j = 0; j < weakParts.length; j += 2) {
+                const subText = weakParts[j];
+                const subMark = weakParts[j + 1] || "";
+                
+                if (subText || subMark) {
+                    // 5. 第三層處理：關鍵詞保護 (字內不換行)
+                    const protectedParts = subText.split(wordRegex);
+                    const content = protectedParts.map((part, k) => {
+                        if (keepTogetherWords.includes(part)) {
+                            return <span key={k} className="whitespace-nowrap">{part}</span>;
+                        }
+                        return part;
+                    });
+
+                    // 每個積木包含文字和後面的弱標點
+                    blocks.push(
+                        <span key={j} className="inline-block">
+                            {content}
+                            <span className="whitespace-nowrap">{subMark}</span>
+                        </span>
+                    );
+                }
+            }
+            
+            // 將這一組積木放入一個 div (代表強制換行的一大段)
+            lines.push(
+                <div key={i} className="text-center">
+                    {blocks}
+                </div>
+            );
         }
     }
 
-    // 4. 輸出：使用 inline-block + normal flow
-    // 讓瀏覽器自己決定：如果一行塞得下兩個積木，就塞；塞不下才折行
-    return (
-        <span className="block text-center w-full">
-            {blocks.map((block, index) => {
-                // 第二層處理：在積木內部保護關鍵詞
-                const parts = block.text.split(wordRegex);
-                const content = parts.map((part, i) => {
-                    if (keepTogetherWords.includes(part)) {
-                        return <span key={i} className="whitespace-nowrap">{part}</span>;
-                    }
-                    return part;
-                });
-
-                return (
-                    <span key={index} className="inline-block">
-                        {content}
-                        <span className="whitespace-nowrap">{block.mark}</span>
-                    </span>
-                );
-            })}
-        </span>
-    );
+    return <div className="flex flex-col gap-1">{lines}</div>;
 };
 
 const formatEnglishTextNoOrphan = (text) => {
@@ -1414,6 +1427,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>神對我吹氣</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#57534E">
+    <meta name="description" content="每日經文領受與靈修日記">
+    <link rel="apple-touch-icon" href="icons/icon-192.png">
+    
+    <!-- 1. 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. 引入 React & ReactDOM (UMD - 解決 Import 問題) -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- 3. 引入 Babel (解析 JSX) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- 4. 全局樣式 -->
+    <style>
+        body { font-family: 'Noto Sans TC', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+        @supports (padding-top: env(safe-area-inset-top)) {
+            body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 如果 React 掛點，會顯示此 Loading 文字。若成功，會被覆蓋。 -->
+    <div id="root" class="flex h-screen items-center justify-center text-gray-500">
+        <div class="text-center">
+            <svg class="animate-spin h-8 w-8 text-stone-500 mx-auto mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            <p>正在領受...</p>
+        </div>
+    </div>
+    
+    <!-- 錯誤訊息容器 -->
+    <div id="global-error" class="hidden fixed top-0 left-0 w-full bg-red-500 text-white p-4 text-center z-50"></div>
+
+    <!-- 5. 註冊 Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(reg => console.log('SW registered'))
+                    .catch(err => console.log('SW failed', err));
+            });
+        }
+        
+        // 全局錯誤捕捉
+        window.onerror = function(msg, url, line, col, error) {
+           const div = document.getElementById('global-error');
+           div.style.display = 'block';
+           div.innerHTML = '<strong>啟動失敗：</strong> ' + msg + '<br><small>(' + url + ':' + line + ')</small>';
+           return false;
+        };
+    </script>
+
+    <!-- 6. 引入主要應用程式 (type="text/babel") -->
+    <script type="text/babel" src="./main.js"></script>
+</body>
+</html>

@@ -634,41 +634,52 @@ const formatEnglishTextNoOrphan = (text) => {
     return <>{head} <span className="whitespace-nowrap">{tail}</span></>;
 };
 
-// 智能斷行 (含孤兒控制)
-// 改良版斷行功能：支援長單字自動切斷加連字號
-// 斷行功能 V2：修復單一長字不換行的 Bug
-// 排版邏輯 V3：英文長字切斷 + 中文避頭點 (標點不置首)
-// 排版邏輯 V4：文字平衡 + 孤兒字控制 + 避頭點 (最終完美版)
-// 排版邏輯 V5：針對圖片生成的強制平衡算法 (解決頭重腳輕)
-// 排版邏輯 V6：語意優先 + 智慧平衡 (解決標點符號被強制切斷的問題)
-// 排版邏輯 V7：修復英文標點誤判 (解決分號導致斷字問題)
-// 排版邏輯 V7 (最終確認版)：智慧語言偵測 + 平衡排版 + 語意優先
+// 排版邏輯 V8 (最終修復版)：神名不換行 + 標點避頭 + 智慧平衡 + 英文修復
 const getLines = (ctx, text, maxWidth) => {
-    // 0. 全局判斷語言：只要內容「沒有中文字」，就全部當作英文處理！
-    // 這樣可以支援所有的標點符號 (分號; 冒號: 括號() 等)，不會再誤判成中文
+    // 0. 全局判斷語言
     const hasChinese = /[\u4e00-\u9fa5]/.test(text);
     const isEnglish = !hasChinese;
 
-    // 1. 基礎切分功能 (保持 V6 的核心邏輯)
+    // 1. 核心切分邏輯
     const computeLines = (limitWidth) => {
-        // === 中文邏輯 (逐字處理 + 避頭點) ===
+        // === 中文邏輯 (特殊處理：神名不換行) ===
         if (!isEnglish) {
-            const words = text.split('');
+            // 定義「不可拆散」的關鍵詞清單
+            const keepTogetherWords = [
+                "耶和華", "耶穌", "基督", "聖靈", "上帝", "主耶穌", "父神",
+                "亞伯拉罕", "以撒", "雅各", "摩西", "大衛", "所羅門", 
+                "保羅", "彼得", "約翰", "馬利亞",
+                "耶路撒冷", "以色列", "法利賽人", "撒都該人"
+            ];
+
+            const regex = new RegExp(`(${keepTogetherWords.join("|")})`, "g");
+            let segments = text.split(regex).filter(s => s !== "");
+            
+            let finalTokens = [];
+            segments.forEach(seg => {
+                if (keepTogetherWords.includes(seg)) {
+                    finalTokens.push(seg); 
+                } else {
+                    finalTokens.push(...seg.split('')); 
+                }
+            });
+
             let lines = [];
-            let currentLine = words[0];
+            let currentLine = finalTokens[0];
             const avoidLineStart = "，。、？！：；」』”’）)]}…,.";
 
-            for (let i = 1; i < words.length; i++) {
-                const word = words[i];
-                const width = ctx.measureText(currentLine + word).width;
+            for (let i = 1; i < finalTokens.length; i++) {
+                const token = finalTokens[i]; 
+                const width = ctx.measureText(currentLine + token).width;
+
                 if (width < limitWidth) {
-                    currentLine += word;
+                    currentLine += token;
                 } else {
-                    if (avoidLineStart.includes(word)) {
-                        currentLine += word;
+                    if (avoidLineStart.includes(token)) {
+                        currentLine += token;
                     } else {
                         lines.push(currentLine);
-                        currentLine = word;
+                        currentLine = token;
                     }
                 }
             }
@@ -676,7 +687,7 @@ const getLines = (ctx, text, maxWidth) => {
             return lines;
         }
 
-        // === 英文邏輯 (逐詞處理 + 空白鍵分隔) ===
+        // === 英文邏輯 ===
         const words = text.split(' ');
         let lines = [];
         let currentLine = ""; 
@@ -684,7 +695,6 @@ const getLines = (ctx, text, maxWidth) => {
             let word = words[i];
             const wordWidth = ctx.measureText(word).width;
             
-            // 處理超長單字 (例如 aaaaaa...)
             if (wordWidth > limitWidth) {
                 if (currentLine !== "") { lines.push(currentLine); currentLine = ""; }
                 let remainingWord = word;
@@ -701,7 +711,6 @@ const getLines = (ctx, text, maxWidth) => {
                 }
                 currentLine = remainingWord;
             } else {
-                // 一般單字處理
                 const space = currentLine === "" ? "" : " ";
                 if (ctx.measureText(currentLine + space + word).width < limitWidth) {
                     currentLine += space + word;
@@ -715,16 +724,13 @@ const getLines = (ctx, text, maxWidth) => {
         return lines;
     };
 
-    // 2. 智慧平衡層 (讓排版接近主頁的美感)
-    
-    // 步驟 A: 自然排版
+    // 2. 智慧平衡與決策層
     const naturalLines = computeLines(maxWidth);
 
     if (naturalLines.length < 2 || naturalLines.length > 4) {
         return naturalLines;
     }
 
-    // 步驟 B: 如果是中文，且結尾是標點，就保留自然排版 (語意優先)
     if (!isEnglish) {
         const firstLine = naturalLines[0];
         const lastChar = firstLine.slice(-1);
@@ -734,7 +740,6 @@ const getLines = (ctx, text, maxWidth) => {
         }
     }
 
-    // 步驟 C: 嘗試平衡排版 (讓兩行長度接近)
     const totalWidth = ctx.measureText(text).width;
     const averageWidth = totalWidth / naturalLines.length;
     const tryWidth = averageWidth * 1.1; 
@@ -743,45 +748,6 @@ const getLines = (ctx, text, maxWidth) => {
 
     if (balancedLines.length === naturalLines.length) {
         const lastLine = balancedLines[balancedLines.length - 1];
-        if (!isEnglish && lastLine.length < 2) {
-             return naturalLines; 
-        }
-        return balancedLines; 
-    }
-
-    return naturalLines; 
-};
-
-    // 2. 智慧決策層 (保持 V6 的語意優先邏輯)
-    
-    // 步驟 A: 自然排版
-    const naturalLines = computeLines(maxWidth);
-
-    if (naturalLines.length < 2 || naturalLines.length > 4) {
-        return naturalLines;
-    }
-
-    // 步驟 B: 檢查標點 (僅針對中文)
-    // 英文不需要這個檢查，因為英文按單字換行，不會有標點被斷在中間的問題
-    if (!isEnglish) {
-        const firstLine = naturalLines[0];
-        const lastChar = firstLine.slice(-1);
-        const punctuation = "，。、？！：；」』”’…,.";
-        if (punctuation.includes(lastChar)) {
-            return naturalLines;
-        }
-    }
-
-    // 步驟 C: 平衡排版
-    const totalWidth = ctx.measureText(text).width;
-    const averageWidth = totalWidth / naturalLines.length;
-    const tryWidth = averageWidth * 1.1; 
-    
-    const balancedLines = computeLines(tryWidth);
-
-    if (balancedLines.length === naturalLines.length) {
-        const lastLine = balancedLines[balancedLines.length - 1];
-        // 孤兒字檢查 (僅針對中文)
         if (!isEnglish && lastLine.length < 2) {
              return naturalLines; 
         }
@@ -1355,6 +1321,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

@@ -635,49 +635,79 @@ const formatEnglishTextNoOrphan = (text) => {
 };
 
 // 智能斷行 (含孤兒控制)
+// 改良版斷行功能：支援長單字自動切斷加連字號
 const getLines = (ctx, text, maxWidth) => {
+    // 判斷是否為英文 (只有英文需要處理連字號)
     const isEnglish = /^[a-zA-Z\s.,?!']+$/.test(text);
-    const minOrphans = isEnglish ? 3 : 5; 
     
-    // 簡易 Tokenize (中文按字，英文按詞)
-    const words = isEnglish ? text.split(' ') : text.split('');
+    // 如果不是英文 (是中文)，維持原本簡單的邏輯
+    if (!isEnglish) {
+        const words = text.split('');
+        let lines = [];
+        let currentLine = words[0];
+        for (let i = 1; i < words.length; i++) {
+            const word = words[i];
+            const width = ctx.measureText(currentLine + word).width;
+            if (width < maxWidth) {
+                currentLine += word;
+            } else {
+                lines.push(currentLine);
+                currentLine = word;
+            }
+        }
+        lines.push(currentLine);
+        return lines;
+    }
+
+    // --- 以下是英文的特殊處理邏輯 ---
+    const words = text.split(' ');
     let lines = [];
     let currentLine = words[0];
-    const separator = isEnglish ? " " : "";
 
     for (let i = 1; i < words.length; i++) {
         const word = words[i];
-        const width = ctx.measureText(currentLine + separator + word).width;
+        const width = ctx.measureText(currentLine + " " + word).width;
+
         if (width < maxWidth) {
-            currentLine += separator + word;
+            // 如果加了這個字還沒滿，就加進去
+            currentLine += " " + word;
         } else {
-            lines.push(currentLine);
-            currentLine = word;
+            // 如果加了這個字會爆掉，先檢查這個字本身是不是「巨無霸單字」
+            const wordWidth = ctx.measureText(word).width;
+            
+            if (wordWidth > maxWidth) {
+                // 狀況一：這個字本身就比一行還寬 (例如 aaaaa...) -> 需要切斷
+                // 1. 先把目前這一行存起來
+                lines.push(currentLine);
+                currentLine = "";
+
+                // 2. 開始切分這個巨無霸單字
+                let remainingWord = word;
+                while (ctx.measureText(remainingWord).width > maxWidth) {
+                    // 找出這一行能塞多少字元
+                    let splitIndex = 0;
+                    let tempStr = "";
+                    // 預留一點寬度給連字號 (-)
+                    while (splitIndex < remainingWord.length && ctx.measureText(tempStr + remainingWord[splitIndex] + "-").width < maxWidth) {
+                        tempStr += remainingWord[splitIndex];
+                        splitIndex++;
+                    }
+                    
+                    // 存入切斷的一行 (加上連字號)
+                    lines.push(tempStr + "-");
+                    // 剩下的字繼續處理
+                    remainingWord = remainingWord.substring(splitIndex);
+                }
+                // 剩下的部分變成新的一行
+                currentLine = remainingWord;
+            } else {
+                // 狀況二：這個字是正常的，只是這行滿了 -> 把字移到下一行就好
+                lines.push(currentLine);
+                currentLine = word;
+            }
         }
     }
     lines.push(currentLine);
-
-    // Orphan Control
-    if (lines.length > 1) {
-        const lastLineIndex = lines.length - 1;
-        let lastLine = lines[lastLineIndex];
-        let prevLine = lines[lastLineIndex - 1];
-        
-        const countTokens = (str) => isEnglish ? str.split(' ').length : str.length;
-        
-        if (countTokens(lastLine) < minOrphans) {
-            const prevTokens = isEnglish ? prevLine.split(' ') : prevLine.split('');
-            const lastTokens = isEnglish ? lastLine.split(' ') : lastLine.split('');
-            
-            while (countTokens(lastTokens.join(separator)) < minOrphans && prevTokens.length > 0) {
-                 const token = prevTokens.pop();
-                 lastTokens.unshift(token);
-            }
-            
-            lines[lastLineIndex - 1] = prevTokens.join(separator);
-            lines[lastLineIndex] = lastTokens.join(separator);
-        }
-    }
     return lines;
 };
 
@@ -1243,4 +1273,5 @@ function GodIsWithYouApp() {
 
 // 渲染應用程式
 const root = createRoot(document.getElementById('root'));
+
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);

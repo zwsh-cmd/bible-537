@@ -1353,12 +1353,4 @@ function GodIsWithYouApp() {
 
 // 渲染應用程式
 const root = createRoot(document.getElementById('root'));
-
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
-
-
-
-
-
-
-

@@ -640,12 +640,13 @@ const formatEnglishTextNoOrphan = (text) => {
 // 排版邏輯 V3：英文長字切斷 + 中文避頭點 (標點不置首)
 // 排版邏輯 V4：文字平衡 + 孤兒字控制 + 避頭點 (最終完美版)
 // 排版邏輯 V5：針對圖片生成的強制平衡算法 (解決頭重腳輕)
+// 排版邏輯 V6：語意優先 + 智慧平衡 (解決標點符號被強制切斷的問題)
 const getLines = (ctx, text, maxWidth) => {
-    // === 內部核心：負責切分行 (包含中英文處理) ===
+    // 1. 基礎切分功能 (保持 V5 的核心邏輯：含中英文處理、避頭點、長單字切割)
     const computeLines = (limitWidth) => {
         const isEnglish = /^[a-zA-Z\s.,?!']+$/.test(text);
 
-        // 中文邏輯 (含避頭點)
+        // 中文邏輯
         if (!isEnglish) {
             const words = text.split('');
             let lines = [];
@@ -670,7 +671,7 @@ const getLines = (ctx, text, maxWidth) => {
             return lines;
         }
 
-        // 英文邏輯 (含長字切割)
+        // 英文邏輯
         const words = text.split(' ');
         let lines = [];
         let currentLine = ""; 
@@ -706,45 +707,47 @@ const getLines = (ctx, text, maxWidth) => {
         return lines;
     };
 
-    // === V5 強制平衡演算法 (Aggressive Balancing) ===
+    // === V6 智慧決策層 ===
     
-    // 1. 先用最大寬度算一次，看看「最自然」的情況下是幾行
-    const originalLines = computeLines(maxWidth);
+    // 步驟 A: 先算「自然排版」 (盡量塞滿一行)
+    const naturalLines = computeLines(maxWidth);
 
-    // 如果只有 1 行，或者行數太多(超過4行)，通常不需要平衡，直接回傳
-    if (originalLines.length < 2 || originalLines.length > 4) {
-        return originalLines;
+    // 如果只有 1 行，或者行數很多，直接用自然排版
+    if (naturalLines.length < 2 || naturalLines.length > 4) {
+        return naturalLines;
     }
 
-    // 2. 計算總字數寬度，算出「絕對平均值」
+    // 步驟 B: 檢查自然排版是否「完美命中」標點符號
+    // 如果第一行的最後一個字是標點符號 (如：，。！)，代表語意完整
+    // 這種情況下，不要雞婆去平衡，直接保留這個完美的斷句
+    const firstLine = naturalLines[0];
+    const lastChar = firstLine.slice(-1);
+    const punctuation = "，。、？！：；」』”’…,.";
+    
+    if (punctuation.includes(lastChar)) {
+        return naturalLines; // 命中標點！直接回傳自然排版
+    }
+
+    // 步驟 C: 如果第一行斷在很奇怪的地方 (不是標點)，我們才嘗試「平衡排版」
+    // (這就是 V5 的邏輯：算出平均寬度，讓兩行一樣長)
     const totalWidth = ctx.measureText(text).width;
-    const lineCount = originalLines.length;
-    const averageWidth = totalWidth / lineCount;
-
-    // 3. 設定一個「嘗試寬度」
-    // 這裡我們用平均值乘以 1.1 (給 10% 的緩衝空間，放標點符號用)
-    // 這會強迫程式碼在更短的地方就換行
-    const tryWidth = averageWidth * 1.1;
-
-    // 4. 用這個比較窄的寬度重新切分
+    const averageWidth = totalWidth / naturalLines.length;
+    const tryWidth = averageWidth * 1.1; // 給一點寬容度
+    
     const balancedLines = computeLines(tryWidth);
 
-    // 5. 驗收成果：
-    // 如果切出來的行數跟原本一樣 (例如原本2行，切完還是2行)，那就採用新的！
-    // 因為新的每一行長度會更接近，比較好看。
-    if (balancedLines.length === lineCount) {
-        // 加分題：檢查最後一行是不是太短 (孤兒字檢查)
-        // 如果是中文，且最後一行少於 2 個字，這也不好看，那我們就退回舊的
+    // 驗收平衡結果
+    // 如果平衡後行數沒有變多，且最後一行不會太短，就採用平衡版
+    if (balancedLines.length === naturalLines.length) {
         const lastLine = balancedLines[balancedLines.length - 1];
         const isEnglish = /^[a-zA-Z\s.,?!']+$/.test(text);
         if (!isEnglish && lastLine.length < 2) {
-             return originalLines; 
+             return naturalLines; // 平衡失敗(最後一行太短)，退回自然版
         }
-        return balancedLines;
+        return balancedLines; // 平衡成功，採用平衡版
     }
 
-    // 如果切完行數變多了 (例如原本2行變成3行)，代表我們壓太扁了，還是用回原本的比較安全
-    return originalLines;
+    return naturalLines; // 平衡導致行數變多，放棄平衡，用回自然版
 };
 
 // 圖片生成邏輯 (支援動態高度與日記)
@@ -1311,6 +1314,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

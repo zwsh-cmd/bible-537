@@ -978,7 +978,6 @@ const EditJournalView = ({ editingVerse, setEditingVerse, onUpdate, maxLength })
     </div>
 );
 
-// === 4. 主要應用程式組件 ===
 function GodIsWithYouApp() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -989,7 +988,8 @@ function GodIsWithYouApp() {
   const [notification, setNotification] = useState(null);
   const [journalInput, setJournalInput] = useState("");
   const [editingVerse, setEditingVerse] = useState(null);
-  const [recentIndices, setRecentIndices] = useState([]);
+  // 新增：防重複清單 (會被儲存起來)
+  const [recentIndices, setRecentIndices] = useState([]); 
   
   const isScripturesEmpty = SCRIPTURES.length === 0;
 
@@ -998,27 +998,40 @@ function GodIsWithYouApp() {
     setHistory(prev => [newEntry, ...prev].slice(0, 20));
   }, []);
 
+  // 1. 初始化：讀取手機裡的記憶 (包含上次看過的 100 句)
   useEffect(() => {
     let initialIndex = 0;
 
     try {
         const savedFavs = localStorage.getItem('godsPromisesFavorites');
         const savedHistory = localStorage.getItem('godsPromisesHistory');
+        const savedRecents = localStorage.getItem('godsPromisesRecents'); // 讀取防重複名單
         
-        if (savedFavs) {
-            setFavorites(JSON.parse(savedFavs) || []);
-        }
-        if (savedHistory) {
-            setHistory(JSON.parse(savedHistory) || []);
-        }
+        if (savedFavs) setFavorites(JSON.parse(savedFavs) || []);
+        if (savedHistory) setHistory(JSON.parse(savedHistory) || []);
+        
+        // 恢復上次的記憶
+        const loadedRecents = savedRecents ? JSON.parse(savedRecents) : [];
+        setRecentIndices(loadedRecents);
+
     } catch (e) {
         console.error("Failed to load data from localStorage:", e);
     }
 
     if (!isScripturesEmpty) {
+        // 隨機選一個初始經文
         initialIndex = Math.floor(Math.random() * SCRIPTURES.length);
         setCurrentIndex(initialIndex);
-        setRecentIndices([initialIndex]);
+        
+        // 將這句初始經文加入記憶 (並確保不蓋掉舊記憶)
+        setRecentIndices(prev => {
+            // 從硬碟再讀一次確保同步
+            const currentRecents = JSON.parse(localStorage.getItem('godsPromisesRecents') || '[]');
+            const newRecents = [initialIndex, ...currentRecents];
+            // 限制 100 句
+            if (newRecents.length > 100) newRecents.pop();
+            return newRecents;
+        });
         
         const initialVerse = SCRIPTURES[initialIndex];
         addToHistory(initialVerse); 
@@ -1035,21 +1048,26 @@ function GodIsWithYouApp() {
     }
   }, []);
 
+  // 2. 自動存檔：收藏
   useEffect(() => {
     try {
         localStorage.setItem('godsPromisesFavorites', JSON.stringify(favorites));
-    } catch (e) {
-        console.error("Failed to save favorites to localStorage:", e);
-    }
+    } catch (e) { console.error(e); }
   }, [favorites]);
 
+  // 3. 自動存檔：歷史
   useEffect(() => {
     try {
         localStorage.setItem('godsPromisesHistory', JSON.stringify(history));
-    } catch (e) {
-        console.error("Failed to save history to localStorage:", e);
-    }
+    } catch (e) { console.error(e); }
   }, [history]);
+
+  // 4. 自動存檔：防重複名單 (這就是讓它重開機還記得的關鍵)
+  useEffect(() => {
+    try {
+        localStorage.setItem('godsPromisesRecents', JSON.stringify(recentIndices));
+    } catch (e) { console.error(e); }
+  }, [recentIndices]);
   
   if (isScripturesEmpty) {
       return <div className="text-center p-10 text-xl text-red-500">錯誤：經文資料庫為空。</div>;
@@ -1072,7 +1090,7 @@ function GodIsWithYouApp() {
     setTimeout(() => {
       let newIndex;
       let attempts = 0;
-      const maxAttempts = 200; 
+      const maxAttempts = 500; // 提高嘗試次數，因為要避開 100 句
       
       do {
         newIndex = Math.floor(Math.random() * SCRIPTURES.length);
@@ -1082,9 +1100,10 @@ function GodIsWithYouApp() {
         attempts < maxAttempts
       );
       
+      // 更新記憶：把新的加進去，確保總數不超過 100
       setRecentIndices(prev => {
           const newRecent = [newIndex, ...prev];
-          if (newRecent.length > 50) {
+          if (newRecent.length > 100) { // <--- 關鍵設定：改為 100 句
               newRecent.pop();
           }
           return newRecent;
@@ -1321,6 +1340,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

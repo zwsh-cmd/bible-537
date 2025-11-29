@@ -637,56 +637,66 @@ const formatEnglishTextNoOrphan = (text) => {
 // 智能斷行 (含孤兒控制)
 // 改良版斷行功能：支援長單字自動切斷加連字號
 // 斷行功能 V2：修復單一長字不換行的 Bug
+// 排版邏輯 V3：英文長字切斷 + 中文避頭點 (標點不置首)
 const getLines = (ctx, text, maxWidth) => {
     // 判斷是否為英文
     const isEnglish = /^[a-zA-Z\s.,?!']+$/.test(text);
 
-    // 中文邏輯 (保持不變)
+    // === 中文排版邏輯 (加入避頭點) ===
     if (!isEnglish) {
         const words = text.split('');
         let lines = [];
         let currentLine = words[0];
+        
+        // 定義「避頭點」：這些符號絕對不能出現在一行的一開頭
+        // 包含：逗號、句號、頓號、問號、驚嘆號、冒號、分號、右引號、右括號...
+        const avoidLineStart = "，。、？！：；」』”’）)]}…,.";
+
         for (let i = 1; i < words.length; i++) {
             const word = words[i];
             const width = ctx.measureText(currentLine + word).width;
+
             if (width < maxWidth) {
+                // 如果寬度夠，就直接加上去
                 currentLine += word;
             } else {
-                lines.push(currentLine);
-                currentLine = word;
+                // 如果寬度不夠了，要換行...
+                // 但先檢查：這個字是不是「避頭點」符號？
+                if (avoidLineStart.includes(word)) {
+                    // 是標點符號！不能讓它去下一行開頭！
+                    // 強制把它黏在這一行後面 (即使會稍微凸出去一點點，也比換行好看)
+                    currentLine += word;
+                } else {
+                    // 是普通中文字，那就正常換行
+                    lines.push(currentLine);
+                    currentLine = word;
+                }
             }
         }
         lines.push(currentLine);
         return lines;
     }
 
-    // --- 修正後的英文邏輯 (V2) ---
+    // === 英文排版邏輯 (維持 V2 完美版) ===
     const words = text.split(' ');
     let lines = [];
     let currentLine = ""; 
 
     for (let i = 0; i < words.length; i++) {
         let word = words[i];
-        
-        // 1. 先處理這個字本身是否超級長 (長到超過一行)
         const wordWidth = ctx.measureText(word).width;
         
         if (wordWidth > maxWidth) {
-            // 如果目前行有東西，先換行
             if (currentLine !== "") {
                 lines.push(currentLine);
                 currentLine = "";
             }
-
-            // 切割這個長單字
             let remainingWord = word;
             while (ctx.measureText(remainingWord).width > maxWidth) {
                 let splitIndex = 0;
                 let tempStr = "";
-                // 尋找切割點
                 while (splitIndex < remainingWord.length) {
                     let char = remainingWord[splitIndex];
-                    // 預留連字號的寬度
                     if (ctx.measureText(tempStr + char + "-").width < maxWidth) {
                         tempStr += char;
                         splitIndex++;
@@ -694,18 +704,13 @@ const getLines = (ctx, text, maxWidth) => {
                         break;
                     }
                 }
-                // 存入切割的一行 (加上連字號)
                 lines.push(tempStr + "-");
                 remainingWord = remainingWord.substring(splitIndex);
             }
-            // 剩下的部分變成新的 currentLine
             currentLine = remainingWord;
-            
         } else {
-            // 2. 字是正常的長度
             const space = currentLine === "" ? "" : " ";
             const lineWidth = ctx.measureText(currentLine + space + word).width;
-            
             if (lineWidth < maxWidth) {
                 currentLine += space + word;
             } else {
@@ -714,7 +719,6 @@ const getLines = (ctx, text, maxWidth) => {
             }
         }
     }
-    // 把最後剩下的也加進去
     if (currentLine !== "") {
         lines.push(currentLine);
     }
@@ -1286,4 +1290,5 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 

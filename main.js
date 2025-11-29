@@ -613,14 +613,44 @@ const formatDateTime = (dateInput) => {
     } catch (e) { return ""; }
 };
 
+// 文字排版優化 V10：詞組強力膠 (防止關鍵詞被切斷)
 const formatTextNoOrphan = (text) => {
     if (!text || typeof text !== 'string') return text;
-    const minChars = 5;
-    if (text.length <= minChars) return text;
-    const breakPoint = text.length - minChars;
-    const head = text.substring(0, breakPoint);
-    const tail = text.substring(breakPoint);
-    return <>{head}<span className="whitespace-nowrap">{tail}</span></>;
+
+    // 1. 定義「死都要黏在一起」的關鍵詞 (包含您提到的詞與常見聖經詞彙)
+    const keepTogetherWords = [
+        // 神格與稱呼
+        "耶和華", "耶穌", "基督", "聖靈", "上帝", "主耶穌", "父神",
+        // 動作與狀態
+        "盡心", "盡性", "盡意", "盡力", // 您特別要求的
+        "稱頌", "敬畏", "仰望", "等候", "尋求", "倚靠", "感謝", "讚美", "事奉",
+        "喜樂", "平安", "盼望", "恩惠", "慈愛", "憐憫", "榮耀", "聖潔", "公義",
+        "施恩", "拯救", "保護", "引導", "扶持", "堅固", "遮蔽", "醫治",
+        "患難", "困苦", "試探", "軟弱", "得勝", "永生", "復活",
+        // 人名與地名
+        "亞伯拉罕", "以撒", "雅各", "摩西", "大衛", "所羅門", "保羅", "彼得",
+        "耶路撒冷", "以色列"
+    ];
+
+    // 2. 製作正則表達式來尋找這些詞
+    const regex = new RegExp(`(${keepTogetherWords.join("|")})`, "g");
+
+    // 3. 切割文字：把「關鍵詞」跟「普通文字」分開
+    const parts = text.split(regex);
+
+    // 4. 組合並加上強力膠 (whitespace-nowrap)
+    return (
+        <>
+            {parts.map((part, index) => {
+                // 如果這個片段是關鍵詞，用 span 包起來強制不換行
+                if (keepTogetherWords.includes(part)) {
+                    return <span key={index} className="whitespace-nowrap">{part}</span>;
+                }
+                // 普通文字直接顯示
+                return part;
+            })}
+        </>
+    );
 };
 
 const formatEnglishTextNoOrphan = (text) => {
@@ -1340,6 +1370,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

@@ -638,91 +638,125 @@ const formatEnglishTextNoOrphan = (text) => {
 // 改良版斷行功能：支援長單字自動切斷加連字號
 // 斷行功能 V2：修復單一長字不換行的 Bug
 // 排版邏輯 V3：英文長字切斷 + 中文避頭點 (標點不置首)
+// 排版邏輯 V4：文字平衡 + 孤兒字控制 + 避頭點 (最終完美版)
 const getLines = (ctx, text, maxWidth) => {
-    // 判斷是否為英文
-    const isEnglish = /^[a-zA-Z\s.,?!']+$/.test(text);
+    // 內部核心邏輯 (原本的 V3 邏輯，負責處理標點符號和避頭點)
+    const computeLines = (limitWidth) => {
+        const isEnglish = /^[a-zA-Z\s.,?!']+$/.test(text);
 
-    // === 中文排版邏輯 (加入避頭點) ===
-    if (!isEnglish) {
-        const words = text.split('');
-        let lines = [];
-        let currentLine = words[0];
-        
-        // 定義「避頭點」：這些符號絕對不能出現在一行的一開頭
-        // 包含：逗號、句號、頓號、問號、驚嘆號、冒號、分號、右引號、右括號...
-        const avoidLineStart = "，。、？！：；」』”’）)]}…,.";
+        // === 中文邏輯 ===
+        if (!isEnglish) {
+            const words = text.split('');
+            let lines = [];
+            let currentLine = words[0];
+            const avoidLineStart = "，。、？！：；」』”’）)]}…,."; // 避頭點符號
 
-        for (let i = 1; i < words.length; i++) {
-            const word = words[i];
-            const width = ctx.measureText(currentLine + word).width;
+            for (let i = 1; i < words.length; i++) {
+                const word = words[i];
+                const width = ctx.measureText(currentLine + word).width;
 
-            if (width < maxWidth) {
-                // 如果寬度夠，就直接加上去
-                currentLine += word;
-            } else {
-                // 如果寬度不夠了，要換行...
-                // 但先檢查：這個字是不是「避頭點」符號？
-                if (avoidLineStart.includes(word)) {
-                    // 是標點符號！不能讓它去下一行開頭！
-                    // 強制把它黏在這一行後面 (即使會稍微凸出去一點點，也比換行好看)
+                if (width < limitWidth) {
                     currentLine += word;
                 } else {
-                    // 是普通中文字，那就正常換行
+                    // 遇到避頭點，強制黏在上一行，不換行
+                    if (avoidLineStart.includes(word)) {
+                        currentLine += word;
+                    } else {
+                        lines.push(currentLine);
+                        currentLine = word;
+                    }
+                }
+            }
+            lines.push(currentLine);
+            return lines;
+        }
+
+        // === 英文邏輯 ===
+        const words = text.split(' ');
+        let lines = [];
+        let currentLine = "";
+
+        for (let i = 0; i < words.length; i++) {
+            let word = words[i];
+            const wordWidth = ctx.measureText(word).width;
+
+            if (wordWidth > limitWidth) {
+                if (currentLine !== "") { lines.push(currentLine); currentLine = ""; }
+                // 處理超長單字切割
+                let remainingWord = word;
+                while (ctx.measureText(remainingWord).width > limitWidth) {
+                    let splitIndex = 0;
+                    let tempStr = "";
+                    while (splitIndex < remainingWord.length) {
+                        let char = remainingWord[splitIndex];
+                        if (ctx.measureText(tempStr + char + "-").width < limitWidth) {
+                            tempStr += char; splitIndex++;
+                        } else { break; }
+                    }
+                    lines.push(tempStr + "-");
+                    remainingWord = remainingWord.substring(splitIndex);
+                }
+                currentLine = remainingWord;
+            } else {
+                const space = currentLine === "" ? "" : " ";
+                if (ctx.measureText(currentLine + space + word).width < limitWidth) {
+                    currentLine += space + word;
+                } else {
                     lines.push(currentLine);
                     currentLine = word;
                 }
             }
         }
-        lines.push(currentLine);
+        if (currentLine !== "") lines.push(currentLine);
+        return lines;
+    };
+
+    // === V4 新增：自動平衡演算法 (Auto-Balance) ===
+    
+    // 1. 先用最大寬度試跑一次，看看最少需要幾行
+    let lines = computeLines(maxWidth);
+
+    // 如果只有 1 行，或者行數太多(超過5行通常不需要平衡)，就直接回傳
+    if (lines.length < 2 || lines.length > 5) {
         return lines;
     }
 
-    // === 英文排版邏輯 (維持 V2 完美版) ===
-    const words = text.split(' ');
-    let lines = [];
-    let currentLine = ""; 
-
-    for (let i = 0; i < words.length; i++) {
-        let word = words[i];
-        const wordWidth = ctx.measureText(word).width;
-        
-        if (wordWidth > maxWidth) {
-            if (currentLine !== "") {
-                lines.push(currentLine);
-                currentLine = "";
-            }
-            let remainingWord = word;
-            while (ctx.measureText(remainingWord).width > maxWidth) {
-                let splitIndex = 0;
-                let tempStr = "";
-                while (splitIndex < remainingWord.length) {
-                    let char = remainingWord[splitIndex];
-                    if (ctx.measureText(tempStr + char + "-").width < maxWidth) {
-                        tempStr += char;
-                        splitIndex++;
-                    } else {
-                        break;
-                    }
-                }
-                lines.push(tempStr + "-");
-                remainingWord = remainingWord.substring(splitIndex);
-            }
-            currentLine = remainingWord;
-        } else {
-            const space = currentLine === "" ? "" : " ";
-            const lineWidth = ctx.measureText(currentLine + space + word).width;
-            if (lineWidth < maxWidth) {
-                currentLine += space + word;
-            } else {
-                lines.push(currentLine);
-                currentLine = word;
-            }
-        }
-    }
-    if (currentLine !== "") {
-        lines.push(currentLine);
-    }
+    // 2. 開始進行平衡優化
+    // 概念：計算總長度，除以行數，算出「理想的平均寬度」
+    // 例如：總長 100，原本分 2 行。理想是一行 50。
+    // 我們嘗試用 50~60 的寬度去限制它，強迫它換行。
     
+    const totalTextWidth = ctx.measureText(text).width;
+    const idealAvgWidth = totalTextWidth / lines.length;
+    
+    // 設定一個嘗試的寬度：理想寬度 + 20% 緩衝 (避免太窄導致行數變多)
+    // 但這個寬度不能超過原本的 maxWidth
+    const tryWidth = Math.min(maxWidth, Math.max(idealAvgWidth * 1.2, maxWidth * 0.75));
+
+    const balancedLines = computeLines(tryWidth);
+
+    // 3. 檢查平衡後的結果是否更好
+    // 條件：行數沒有變多 (如果變多了就是弄巧成拙，要丟掉)
+    if (balancedLines.length === lines.length) {
+        
+        // 4. 最後一關：孤兒字檢查
+        // 確保最後一行不要少於 3 個字 (如果是中文)
+        const lastLine = balancedLines[balancedLines.length - 1];
+        const isEnglish = /^[a-zA-Z\s.,?!']+$/.test(text);
+        
+        if (!isEnglish && lastLine.length < 3) {
+            // 如果平衡後最後一行還是太短(例如只有2字)，
+            // 我們再稍微縮小一點寬度，逼更多字擠下來
+            const tighterLines = computeLines(tryWidth * 0.9);
+             if (tighterLines.length === lines.length) {
+                 return tighterLines;
+             }
+        }
+        
+        return balancedLines;
+    }
+
+    // 如果平衡失敗，就回傳原本的結果
     return lines;
 };
 
@@ -1290,5 +1324,6 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 

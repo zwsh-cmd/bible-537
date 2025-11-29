@@ -615,12 +615,18 @@ const formatDateTime = (dateInput) => {
 
 // 文字排版優化 V10：詞組強力膠 (防止關鍵詞被切斷)
 // 排版優化 V11：海量詞庫 + 標點黏著 + 智慧斷行
+// 排版優化 V12：用戶指定詞庫擴充 + 嚴格避頭點 (標點不置首)
 const formatTextNoOrphan = (text) => {
     if (!text || typeof text !== 'string') return text;
 
-    // 1. 定義不想被切斷的詞彙 (包含您提到的和更多常用語)
+    // 1. 定義「死都要黏在一起」的關鍵詞
     const keepTogetherWords = [
-        // 神學/名詞
+        // --- V12 您指定補充的詞彙 ---
+        "腳前的燈", "充充滿滿",
+        "定罪", "完全", "寶座", "因此", "跌倒", "同去", "清潔", "臨近", 
+        "為寶", "為尊", "訓誨", "犯罪", "過失", "尋找", "聚集", "欺壓", "患難",
+        
+        // --- 原有常用詞庫 (保持排版美觀) ---
         "耶和華", "耶穌", "基督", "聖靈", "上帝", "主耶穌", "父神",
         "十字架", "救世主", "彌賽亞", "創造主", "全能者", "至高者",
         "以色列", "耶路撒冷", "法利賽人", "撒都該人", "外邦人", "門徒", "使徒",
@@ -628,9 +634,8 @@ const formatTextNoOrphan = (text) => {
         "星宿", "數目", "名字", "眼淚", "死亡", "悲哀", "哭號", "疼痛",
         "自由", "真理", "生命", "道路", "恩典", "慈愛", "憐憫", "榮耀",
         "智慧", "知識", "聰明", "能力", "權柄", "國度", "旨意", "試探",
-        "患難", "困苦", "逼迫", "危險", "刀劍", "網羅", "陷阱", "盾牌",
+        "困苦", "逼迫", "危險", "刀劍", "網羅", "陷阱", "盾牌",
         "山寨", "避難所", "磐石", "高臺", "活水", "靈糧", "聖殿", "教會",
-        // 動詞/形容詞/副詞
         "單單", "僅僅", "惟獨", "常常", "永遠", "世世", "從前", "如今", "將來",
         "盡心", "盡性", "盡意", "盡力", "專心", "誠實", "謙卑", "溫柔",
         "喜樂", "平安", "忍耐", "良善", "信實", "節制", "聖潔", "公義",
@@ -642,53 +647,47 @@ const formatTextNoOrphan = (text) => {
         "行道", "聽道", "欺哄", "論斷", "饒恕", "相愛", "和睦", "同心",
         "數點", "稱呼", "擦去", "過去", "留下", "賜給", "所賜", "不像",
         "不要", "不可", "不能", "不會", "不敢", "不致", "不至", "必定",
-        // 代名詞/虛詞 (建議黏著)
         "你們", "我們", "他們", "自己", "一切", "所有", "各樣", "諸般",
         "因為", "所以", "雖然", "但是", "只是", "如果", "若是", "無論",
         "甚至", "並且", "而且", "以及", "還是", "或者"
     ];
 
-    // 2. 標點符號黏著處理 (讓標點永遠黏在前一個字後面)
-    // 我們先用一個特殊的佔位符來保護標點
-    let processedText = text;
+    // 2. 標點符號清單 (避頭點規則用)
     const punctuations = "，。、？！：；」』”’…,.";
     
-    // 3. 製作正則表達式來尋找詞彙
-    // 為了效能，我們把詞彙依長度排序 (長的優先匹配)
+    // 3. 排序 (長詞優先匹配) 並製作正則
     keepTogetherWords.sort((a, b) => b.length - a.length);
     const regex = new RegExp(`(${keepTogetherWords.join("|")})`, "g");
 
     // 4. 切割並重組
-    const parts = processedText.split(regex);
+    const parts = text.split(regex);
 
     return (
         <>
             {parts.map((part, index) => {
-                // 檢查是否為標點符號 (如果這個片段開頭就是標點，把它黏到上一個片段去)
-                // 但 React 的 map 很難直接操作上一個元素，所以我們改用 CSS
-                
-                // 如果是關鍵詞，強制不換行
+                // A. 如果是關鍵詞，強制不換行 (用 inline-block 保持完整性)
                 if (keepTogetherWords.includes(part)) {
                     return <span key={index} className="whitespace-nowrap inline-block">{part}</span>;
                 }
                 
-                // 處理普通文字中的標點符號防切斷
-                // 我們把每個字拆開，但如果遇到標點，就把它跟前一個字包在一起
+                // B. 處理普通文字中的「避頭點」
+                // 邏輯：檢查每個字的「下一個字」是不是標點？
+                // 如果是，就把「這個字 + 標點」黏在一起，視為一個不可分割的單位。
                 const chars = part.split('');
                 const result = [];
                 for (let i = 0; i < chars.length; i++) {
                     const char = chars[i];
                     const nextChar = chars[i+1];
                     
-                    // 如果下一個是標點，把這個字跟標點包在一起 (No Break)
-                    if (punctuations.includes(nextChar)) {
+                    if (nextChar && punctuations.includes(nextChar)) {
+                        // 發現標點！啟動強力膠，把 當前字(char) 和 標點(nextChar) 黏死
                         result.push(<span key={`${index}-${i}`} className="whitespace-nowrap">{char}{nextChar}</span>);
-                        i++; // 跳過下一個 (因為已經處理了)
+                        i++; // 跳過下一個 (因為已經被黏過來了)
                     } else if (punctuations.includes(char)) {
-                        // 如果當前就是標點 (且沒被上面抓走，這通常不應該發生，除非標點在開頭)
+                        // 防禦性處理：如果當前字本身就是標點 (通常不會單獨跑到這，除非在開頭)
                         result.push(<span key={`${index}-${i}`}>{char}</span>);
                     } else {
-                        // 普通字
+                        // 普通字，允許自由換行
                         result.push(char);
                     }
                 }
@@ -1415,6 +1414,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

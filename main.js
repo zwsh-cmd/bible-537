@@ -617,22 +617,23 @@ const formatDateTime = (dateInput) => {
 // 排版優化 V11：海量詞庫 + 標點黏著 + 智慧斷行
 // 排版優化 V12：用戶指定詞庫擴充 + 嚴格避頭點 (標點不置首)
 // 排版優化 V14：雙層防護 (語意區塊排版 + 關鍵詞庫保護)
+// 排版優化 V15：詩歌分行排版 (遇標點強制換行 + 關鍵詞保護)
 const formatTextNoOrphan = (text) => {
     if (!text || typeof text !== 'string') return text;
 
-    // --- 第 1 層：定義不想被切斷的「關鍵詞」 (微觀保護) ---
+    // 1. 定義不想被切斷的關鍵詞 (詞庫)
     const keepTogetherWords = [
-        // 用戶指定補充
+        // 您的補充詞彙
         "定罪", "完全", "寶座", "因此", "跌倒", "同去", "清潔", "臨近", 
         "為寶", "為尊", "訓誨", "充充滿滿", "犯罪", "過失", "尋找", "聚集", 
         "欺壓", "患難", "腳前的燈", "路上的光",
         
-        // 神格與重要名詞
+        // 常用神學/名詞
         "耶和華", "耶穌", "基督", "聖靈", "上帝", "主耶穌", "父神",
         "十字架", "救世主", "彌賽亞", "全能者", "至高者", "以色列", "耶路撒冷",
         "法利賽人", "撒都該人", "外邦人", "門徒", "使徒", "先知", "祭司",
         
-        // 重要詞彙 (雙字/四字)
+        // 常用詞彙
         "自由", "真理", "生命", "道路", "恩典", "慈愛", "憐憫", "榮耀",
         "智慧", "知識", "聰明", "能力", "權柄", "國度", "旨意", "試探",
         "單單", "僅僅", "惟獨", "常常", "永遠", "世世", "從前", "如今",
@@ -647,47 +648,45 @@ const formatTextNoOrphan = (text) => {
         "甚至", "並且", "而且", "以及", "還是", "或者"
     ];
 
-    // 建立正則表達式 (按長度排序，確保長詞優先)
+    // 2. 製作關鍵詞保護的正則表達式
     keepTogetherWords.sort((a, b) => b.length - a.length);
     const wordRegex = new RegExp(`(${keepTogetherWords.join("|")})`, "g");
 
-    // 輔助函式：處理單一句子內的「關鍵詞保護」
-    const processSentence = (sentence) => {
-        if (!sentence) return null;
-        // 把句子裡的關鍵詞切出來，包上 span (nowrap)
-        const parts = sentence.split(wordRegex);
-        return parts.map((part, i) => {
-            if (keepTogetherWords.includes(part)) {
-                return <span key={i} className="whitespace-nowrap">{part}</span>;
-            }
-            return part;
-        });
-    };
-
-    // --- 第 2 層：語意分段 (宏觀排版) ---
-    // 先用標點符號將經文切成多個「語意積木」
+    // 3. 第一層切割：依據標點符號，把經文切成「一行一行」
+    // 使用 split 保留標點，讓標點跟著上一句
     const rawParts = text.split(/([，；。？！：,.?!;:])/);
-    const blocks = [];
+    const lines = [];
 
-    // 重新組裝：把「文字」跟它後面的「標點」黏在一起
     for (let i = 0; i < rawParts.length; i += 2) {
         const sentenceText = rawParts[i];
-        const mark = rawParts[i + 1] || ""; 
+        const mark = rawParts[i + 1] || "";
         
         if (sentenceText || mark) {
-            // 這裡做雙層處理：
-            // 1. 處理句子內部的關鍵詞 (processSentence)
-            // 2. 把標點符號也包在 nowrap 裡，確保標點不折行
-            blocks.push(
-                <span key={i} className="inline-block">
-                    {processSentence(sentenceText)}
-                    <span className="whitespace-nowrap">{mark}</span>
-                </span>
-            );
+            lines.push(sentenceText + mark);
         }
     }
 
-    return <>{blocks}</>;
+    // 4. 輸出：使用 Flex Column 讓每一句都獨佔一行 (垂直排列)
+    return (
+        <span className="flex flex-col items-center gap-1">
+            {lines.map((line, index) => {
+                // 第二層處理：在這一行裡面，保護關鍵詞不被切斷
+                const parts = line.split(wordRegex);
+                const content = parts.map((part, i) => {
+                    if (keepTogetherWords.includes(part)) {
+                        return <span key={i} className="whitespace-nowrap">{part}</span>;
+                    }
+                    return part;
+                });
+
+                return (
+                    <span key={index} className="text-center block">
+                        {content}
+                    </span>
+                );
+            })}
+        </span>
+    );
 };
 
 const formatEnglishTextNoOrphan = (text) => {
@@ -1407,6 +1406,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

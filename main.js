@@ -23,7 +23,10 @@ const Save = (props) => <IconBase d={["M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11
 const MinusCircle = (props) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>;
 const RefreshCw = (props) => <IconBase d={["M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8", "M21 3v5h-5", "M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16", "M8 16H3v5"]} {...props} />;
 const Edit = (props) => <IconBase d={["M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7", "M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"]} {...props} />;
-
+const Settings = (props) => <IconBase d={["M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.18-.08a2 2 0 0 0-2 0l-.45.45a2 2 0 0 0 0 2l.08.18a2 2 0 0 1 0 2l-.25.43a2 2 0 0 1-1.73 1h-.18a2 2 0 0 0-2 2v.44a2 2 0 0 0 2 2h.18a2 2 0 0 1 1.73 1l.25.43a2 2 0 0 1 0 2l-.08.18a2 2 0 0 0 0 2l.45.45a2 2 0 0 0 2 0l.18-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V22h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.18.08a2 2 0 0 0 2 0l.45-.45a2 2 0 0 0 0-2l-.08-.18a2 2 0 0 1 0-2l.25-.43a2 2 0 0 1 1.73-1h.18a2 2 0 0 0 2-2v-.44a2 2 0 0 0-2-2h-.18a2 2 0 0 1-1.73-1l-.25-.43a2 2 0 0 1 0-2l.08-.18a2 2 0 0 0 0-2l-.45-.45a2 2 0 0 0-2 0l-.18.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z", "M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"]} {...props} />;
+const Download = (props) => <IconBase d={["M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", "M7 10l5 5 5-5", "M12 15V3"]} {...props} />;
+const Upload = (props) => <IconBase d={["M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", "M17 8l-5-5-5 5", "M12 3v12"]} {...props} />;
+         
 // === 1. 錯誤邊界組件 (防止 App 崩潰導致白屏) ===
 class ErrorBoundary extends React.Component {
   constructor(props) {
@@ -1104,11 +1107,10 @@ function GodIsWithYouApp() {
   const [favorites, setFavorites] = useState([]);
   const [history, setHistory] = useState([]); 
   const [showModal, setShowModal] = useState(false); 
-  const [activeTab, setActiveTab] = useState('favorites');
+  const [activeTab, setActiveTab] = useState('favorites'); // 可能的值: 'favorites', 'history', 'settings'
   const [notification, setNotification] = useState(null);
   const [journalInput, setJournalInput] = useState("");
   const [editingVerse, setEditingVerse] = useState(null);
-  // 新增：防重複清單 (會被儲存起來)
   const [recentIndices, setRecentIndices] = useState([]); 
   
   const isScripturesEmpty = SCRIPTURES.length === 0;
@@ -1118,80 +1120,47 @@ function GodIsWithYouApp() {
     setHistory(prev => [newEntry, ...prev].slice(0, 20));
   }, []);
 
-  // 1. 初始化：讀取手機裡的記憶 (包含上次看過的 100 句)
+  // 1. 初始化：讀取
   useEffect(() => {
     let initialIndex = 0;
-
     try {
         const savedFavs = localStorage.getItem('godsPromisesFavorites');
         const savedHistory = localStorage.getItem('godsPromisesHistory');
-        const savedRecents = localStorage.getItem('godsPromisesRecents'); // 讀取防重複名單
+        const savedRecents = localStorage.getItem('godsPromisesRecents');
         
         if (savedFavs) setFavorites(JSON.parse(savedFavs) || []);
         if (savedHistory) setHistory(JSON.parse(savedHistory) || []);
-        
-        // 恢復上次的記憶
         const loadedRecents = savedRecents ? JSON.parse(savedRecents) : [];
         setRecentIndices(loadedRecents);
-
-    } catch (e) {
-        console.error("Failed to load data from localStorage:", e);
-    }
+    } catch (e) { console.error("Load failed:", e); }
 
     if (!isScripturesEmpty) {
-        // 隨機選一個初始經文
         initialIndex = Math.floor(Math.random() * SCRIPTURES.length);
         setCurrentIndex(initialIndex);
-        
-        // 將這句初始經文加入記憶 (並確保不蓋掉舊記憶)
         setRecentIndices(prev => {
-            // 從硬碟再讀一次確保同步
             const currentRecents = JSON.parse(localStorage.getItem('godsPromisesRecents') || '[]');
             const newRecents = [initialIndex, ...currentRecents];
-            // 限制 100 句
             if (newRecents.length > 100) newRecents.pop();
             return newRecents;
         });
-        
         const initialVerse = SCRIPTURES[initialIndex];
         addToHistory(initialVerse); 
-
         setTimeout(() => {
             try {
                  const savedFavs = JSON.parse(localStorage.getItem('godsPromisesFavorites') || '[]');
                  const foundFav = savedFavs.find(f => f.text === initialVerse.text);
-                 if (foundFav) {
-                    setJournalInput(foundFav.journalEntry || "");
-                 }
+                 if (foundFav) setJournalInput(foundFav.journalEntry || "");
             } catch (e) {}
         }, 0);
     }
   }, []);
 
-  // 2. 自動存檔：收藏
-  useEffect(() => {
-    try {
-        localStorage.setItem('godsPromisesFavorites', JSON.stringify(favorites));
-    } catch (e) { console.error(e); }
-  }, [favorites]);
-
-  // 3. 自動存檔：歷史
-  useEffect(() => {
-    try {
-        localStorage.setItem('godsPromisesHistory', JSON.stringify(history));
-    } catch (e) { console.error(e); }
-  }, [history]);
-
-  // 4. 自動存檔：防重複名單 (這就是讓它重開機還記得的關鍵)
-  useEffect(() => {
-    try {
-        localStorage.setItem('godsPromisesRecents', JSON.stringify(recentIndices));
-    } catch (e) { console.error(e); }
-  }, [recentIndices]);
+  // 2. 自動存檔 (收藏、歷史、防重複)
+  useEffect(() => { try { localStorage.setItem('godsPromisesFavorites', JSON.stringify(favorites)); } catch (e) {} }, [favorites]);
+  useEffect(() => { try { localStorage.setItem('godsPromisesHistory', JSON.stringify(history)); } catch (e) {} }, [history]);
+  useEffect(() => { try { localStorage.setItem('godsPromisesRecents', JSON.stringify(recentIndices)); } catch (e) {} }, [recentIndices]);
   
-  if (isScripturesEmpty) {
-      return <div className="text-center p-10 text-xl text-red-500">錯誤：經文資料庫為空。</div>;
-  }
+  if (isScripturesEmpty) return <div className="text-center p-10 text-xl text-red-500">錯誤：經文資料庫為空。</div>;
   
   const currentVerse = SCRIPTURES[currentIndex];
   const currentSavedFav = favorites.find(f => f.text === (currentVerse ? currentVerse.text : null));
@@ -1199,119 +1168,95 @@ function GodIsWithYouApp() {
   const savedJournal = currentSavedFav?.journalEntry.trim() || '';
   const isJournalUnchanged = journalInput.trim() === savedJournal;
 
-  const handleNextVerse = () => {
-    if (isCurrentFavorite && !isJournalUnchanged) {
-        console.warn("注意：日記有未保存的變更。");
-    }
-    
-    setIsAnimating(true);
-    setJournalInput(""); 
+  // --- V22 新增：備份與還原功能 ---
+  const handleBackup = () => {
+      const data = {
+          favorites,
+          history,
+          recents: recentIndices,
+          version: "2.0",
+          backupDate: new Date().toISOString()
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `GodsPromises_Backup_${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showNotification("備份檔案已下載！請妥善保存。");
+  };
 
+  const handleRestore = (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+          try {
+              const data = JSON.parse(e.target.result);
+              if (data.favorites) setFavorites(data.favorites);
+              if (data.history) setHistory(data.history);
+              if (data.recents) setRecentIndices(data.recents);
+              showNotification("資料還原成功！");
+              setShowModal(false);
+          } catch (err) {
+              showNotification("還原失敗：檔案格式錯誤");
+          }
+      };
+      reader.readAsText(file);
+  };
+
+  const handleNextVerse = () => {
+    if (isCurrentFavorite && !isJournalUnchanged) console.warn("注意：日記有未保存的變更。");
+    setIsAnimating(true); setJournalInput(""); 
     setTimeout(() => {
-      let newIndex;
-      let attempts = 0;
-      const maxAttempts = 500; // 提高嘗試次數，因為要避開 100 句
+      let newIndex; let attempts = 0; const maxAttempts = 500; 
+      do { newIndex = Math.floor(Math.random() * SCRIPTURES.length); attempts++; } 
+      while ((newIndex === currentIndex || recentIndices.includes(newIndex)) && attempts < maxAttempts);
       
-      do {
-        newIndex = Math.floor(Math.random() * SCRIPTURES.length);
-        attempts++;
-      } while (
-        (newIndex === currentIndex || recentIndices.includes(newIndex)) && 
-        attempts < maxAttempts
-      );
-      
-      // 更新記憶：把新的加進去，確保總數不超過 100
       setRecentIndices(prev => {
           const newRecent = [newIndex, ...prev];
-          if (newRecent.length > 100) { // <--- 關鍵設定：改為 100 句
-              newRecent.pop();
-          }
+          if (newRecent.length > 100) newRecent.pop();
           return newRecent;
       });
       
       setCurrentIndex(newIndex);
-      
       const newVerse = SCRIPTURES[newIndex];
       const foundFav = favorites.find(f => f.text === newVerse.text);
-      if (foundFav) {
-          setJournalInput(foundFav.journalEntry || "");
-      }
-      
+      if (foundFav) setJournalInput(foundFav.journalEntry || "");
       addToHistory(newVerse); 
-      
-      setIsAnimating(false);
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      setIsAnimating(false); window.scrollTo({ top: 0, behavior: 'smooth' });
     }, 300);
   };
 
   const handleSaveFavorite = () => {
-    if (!currentVerse) {
-        showNotification("經文資料遺失，無法保存");
-        return;
-    }
-    
-    const newFavorite = { 
-      ...currentVerse, 
-      timestamp: new Date().toISOString(),
-      journalEntry: journalInput.trim() 
-    };
-    
+    if (!currentVerse) return;
+    const newFavorite = { ...currentVerse, timestamp: new Date().toISOString(), journalEntry: journalInput.trim() };
     setFavorites(prev => {
       const existingIndex = prev.findIndex(f => f.text === currentVerse.text);
-
       if (existingIndex > -1) {
         const updatedList = prev.filter((_, index) => index !== existingIndex);
         return [newFavorite, ...updatedList];
-      } else {
-        return [newFavorite, ...prev];
-      }
+      } else { return [newFavorite, ...prev]; }
     });
-
-    let message = "已加入收藏";
-    if (isCurrentFavorite && !isJournalUnchanged) {
-        message = "日記已更新並保存收藏";
-    } else if (isCurrentFavorite && isJournalUnchanged) {
-        message = "經文已在收藏中 (日記無變更)";
-    }
-    
-    showNotification(message);
+    showNotification(isCurrentFavorite && !isJournalUnchanged ? "日記已更新並保存" : "已加入收藏");
   };
 
   const handleRemoveFavorite = (textToRemove) => {
      setFavorites(favorites.filter(f => f.text !== textToRemove));
-     if (currentVerse && currentVerse.text === textToRemove) {
-         setJournalInput("");
-     }
+     if (currentVerse && currentVerse.text === textToRemove) setJournalInput("");
      showNotification("已從收藏移除");
   };
   
-  const showNotification = (msg) => {
-    setNotification(msg);
-    setTimeout(() => setNotification(null), 5000); 
-  };
+  const showNotification = (msg) => { setNotification(msg); setTimeout(() => setNotification(null), 5000); };
 
   const handleCopy = (text, textEn, ref, refEn) => {
     const textToCopy = `${text}\n\n${textEn}\n\n— 經文出處 —\n${ref} (${refEn})\n\n[來自 神對我吹氣 App]`;
-    const performFallbackCopy = () => {
-        const textArea = document.createElement("textarea");
-        textArea.value = textToCopy;
-        textArea.style.position = "fixed"; textArea.style.left = "0"; textArea.style.top = "0"; textArea.style.opacity = "0";
-        textArea.setAttribute('readonly', '');
-        document.body.appendChild(textArea);
-        if (navigator.userAgent.match(/ipad|iphone/i)) {
-            const range = document.createRange(); range.selectNodeContents(textArea); 
-            const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range);
-            textArea.setSelectionRange(0, 999999);
-        } else { textArea.select(); }
-        try {
-            const successful = document.execCommand('copy');
-            if (successful) showNotification("已複製經文文字"); else showNotification("複製失敗");
-        } catch (err) { showNotification("複製功能暫時無法使用"); } 
-        finally { document.body.removeChild(textArea); }
-    };
     if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(textToCopy).then(() => showNotification("已複製經文文字")).catch(() => performFallbackCopy());
-    } else { performFallbackCopy(); }
+        navigator.clipboard.writeText(textToCopy).then(() => showNotification("已複製經文")).catch(() => {});
+    }
   };
 
   const handleShareImage = async () => {
@@ -1320,47 +1265,31 @@ function GodIsWithYouApp() {
     try {
         const imageBlob = await generateCardImage(currentVerse);
         const file = new File([imageBlob], "scripture-card.png", { type: "image/png" });
-
         if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
              await navigator.share({ title: '神對我吹氣', text: '願這段經文祝福你！', files: [file] });
         } else {
             const url = URL.createObjectURL(imageBlob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `scripture-${Date.now()}.png`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            showNotification("圖片已下載 (請手動傳送)");
+            const a = document.createElement('a'); a.href = url; a.download = `scripture-${Date.now()}.png`;
+            document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+            showNotification("圖片已下載");
         }
-    } catch (error) {
-        console.error("Image generation failed:", error);
-        showNotification("圖片產生失敗，已複製文字");
-        handleCopy(currentVerse.text, currentVerse.textEn, currentVerse.reference, currentVerse.referenceEn);
-    }
+    } catch (error) { showNotification("圖片產生失敗"); }
   };
 
   const handleShareCollected = async (verse) => {
      showNotification("正在產生分享卡片...");
      try {
         const imageBlob = await generateCardImage(verse); 
-        const file = new File([imageBlob], "scripture-journal-card.png", { type: "image/png" });
+        const file = new File([imageBlob], "scripture-journal.png", { type: "image/png" });
         if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-             await navigator.share({ title: '神對我吹氣 - 我的領受', text: '我的領受與回應', files: [file] });
+             await navigator.share({ title: '我的領受', text: '我的領受與回應', files: [file] });
         } else {
             const url = URL.createObjectURL(imageBlob);
             const a = document.createElement('a'); a.href = url; a.download = `journal-${Date.now()}.png`;
             document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
-            showNotification("圖片已下載 (請手動傳送)");
+            showNotification("圖片已下載");
         }
-     } catch (e) {
-        const journalText = verse.journalEntry ? `\n\n【我的回應】\n${verse.journalEntry}` : "";
-        const textToShare = `${verse.text}\n\n${verse.textEn}\n\n— 經文出處 —\n${verse.reference} (${verse.referenceEn})${journalText}\n\n[來自 神對我吹氣 App]`;
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-             navigator.clipboard.writeText(textToShare).then(() => showNotification("圖片生成失敗，已複製文字"));
-        }
-     }
+     } catch (e) { showNotification("圖片生成失敗"); }
   };
 
   const handleEditClick = (verse) => { setEditingVerse({ ...verse, tempJournalEntry: verse.journalEntry || "" }); };
@@ -1369,31 +1298,27 @@ function GodIsWithYouApp() {
     const updatedText = editingVerse.tempJournalEntry.trim();
     setFavorites(prev => prev.map(f => f.text === editingVerse.text ? { ...f, journalEntry: updatedText, timestamp: new Date().toISOString() } : f));
     if (currentVerse && currentVerse.text === editingVerse.text) setJournalInput(updatedText);
-    setEditingVerse(null); 
-    showNotification("日記已更新");
+    setEditingVerse(null); showNotification("日記已更新");
   };
 
   const VerseListItem = ({ verse, isFavorite, onRemove, onShare, onEdit }) => (
-    <div className="flex flex-col p-4 bg-white rounded-xl shadow-sm border border-gray-100 mb-3 hover:shadow-md transition-shadow">
+    <div className="flex flex-col p-4 bg-white rounded-xl shadow-sm border border-gray-100 mb-3">
       <div className="flex justify-between items-start">
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-gray-800 leading-relaxed truncate-3-lines">{verse.text}</p>
-          <p className="text-xs text-gray-500 mt-1 italic leading-relaxed truncate-3-lines">{verse.textEn}</p>
-          <p className="text-xs text-gray-500 mt-2 font-medium">{verse.reference} <span className="text-gray-400 font-serif italic ml-1">({verse.referenceEn})</span></p>
+          <p className="text-xs text-gray-500 mt-2 font-medium">{verse.reference}</p>
           <div className="flex items-center text-xs text-gray-400 mt-2"><Calendar className="w-3 h-3 mr-1" /><span className="font-mono">{formatDateTime(verse.timestamp)}</span></div>
         </div>
         <div className="flex flex-col gap-2 ml-4">
-             <div className="flex flex-col gap-2">
-                <TooltipButton onClick={() => onEdit(verse)} icon={Edit} label="編輯回應" />
-                <TooltipButton onClick={() => onShare(verse)} icon={Share2} label="分享經文與日記" />
-                {isFavorite && (<TooltipButton onClick={() => onRemove(verse.text)} icon={Trash2} label="移除收藏" />)}
-            </div>
+            <TooltipButton onClick={() => onEdit(verse)} icon={Edit} label="編輯" />
+            <TooltipButton onClick={() => onShare(verse)} icon={Share2} label="分享" />
+            {isFavorite && (<TooltipButton onClick={() => onRemove(verse.text)} icon={Trash2} label="移除" />)}
         </div>
       </div>
       {verse.journalEntry && verse.journalEntry.trim() && (
         <div className="mt-3 pt-3 border-t border-gray-100">
-          <p className="text-xs font-bold text-gray-600 mb-1 flex items-center gap-1"><PenLine className="w-3 h-3" /> 我的回應</p>
-          <p className="text-sm text-gray-700 italic bg-gray-50 p-2 rounded-lg border border-gray-100" style={{ wordBreak: 'break-word', hyphens: 'auto' }} lang="en">{verse.journalEntry}</p>
+          <p className="text-xs font-bold text-gray-600 mb-1 flex items-center gap-1"><PenLine className="w-3 h-3" /> 回應</p>
+          <p className="text-sm text-gray-700 italic bg-gray-50 p-2 rounded-lg">{verse.journalEntry}</p>
         </div>
       )}
     </div>
@@ -1408,7 +1333,7 @@ function GodIsWithYouApp() {
         <div className="flex items-center gap-3"><BookOpen className="w-6 h-6 text-gray-600" /><h1 className="text-xl font-bold text-gray-800 tracking-wide">神對我吹氣</h1></div>
         <div className='flex gap-2'>
             <button onClick={handleNextVerse} disabled={isAnimating} className="text-sm font-bold tracking-widest text-white bg-stone-600/90 hover:bg-stone-700 shadow-lg shadow-stone-300/50 px-5 py-2 rounded-full transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"><RefreshCw className={`w-4 h-4 mr-2 inline ${isAnimating ? 'animate-spin' : ''}`} /> 領受</button>
-            <button onClick={() => { setShowModal(true); setActiveTab('favorites'); }} className="flex items-center gap-1 px-3 py-2 rounded-full text-sm font-medium bg-stone-300/60 text-gray-700 hover:bg-stone-400/70 transition-all active:scale-95 shadow-md shadow-stone-200/50"><Heart className="w-5 h-5 fill-gray-500 text-gray-500" /><span className="hidden sm:inline">收藏記錄 ({favorites.length})</span></button>
+            <button onClick={() => { setShowModal(true); setActiveTab('favorites'); }} className="flex items-center gap-1 px-3 py-2 rounded-full text-sm font-medium bg-stone-300/60 text-gray-700 hover:bg-stone-400/70 transition-all active:scale-95 shadow-md shadow-stone-200/50"><Heart className="w-5 h-5 fill-gray-500 text-gray-500" /><span className="hidden sm:inline">收藏 ({favorites.length})</span></button>
         </div>
       </nav>
 
@@ -1427,8 +1352,8 @@ function GodIsWithYouApp() {
                 </div>
                 <div className="flex justify-center items-center mt-4 pt-3 border-t border-gray-100 gap-4">
                    <div className="flex gap-4">
-                    <TooltipButton onClick={() => handleCopy(currentVerse.text, currentVerse.textEn, currentVerse.reference, currentVerse.referenceEn)} icon={Copy} label="複製經文" />
-                    <TooltipButton onClick={handleShareImage} icon={Share2} label="分享經文卡圖片" />
+                    <TooltipButton onClick={() => handleCopy(currentVerse.text, currentVerse.textEn, currentVerse.reference, currentVerse.referenceEn)} icon={Copy} label="複製" />
+                    <TooltipButton onClick={handleShareImage} icon={Share2} label="分享圖片" />
                    </div>
                 </div>
               </div>
@@ -1443,7 +1368,7 @@ function GodIsWithYouApp() {
                     <span className="text-xs text-gray-400">{journalInput.length} / {MAX_JOURNAL_LENGTH}</span>
                     <div className="flex gap-2">
                         {isCurrentFavorite && (<button onClick={() => handleRemoveFavorite(currentVerse.text)} className="flex items-center gap-1 px-3 py-2 rounded-full text-xs font-medium bg-rose-100/60 text-rose-600 hover:bg-rose-200/80 transition-all active:scale-95"><MinusCircle className="w-4 h-4" /> 移除</button>)}
-                        <button onClick={handleSaveFavorite} className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all active:scale-95 ${isCurrentFavorite && isJournalUnchanged ? 'bg-stone-200 text-stone-500 cursor-default' : 'bg-stone-600 text-white hover:bg-stone-700 shadow-lg shadow-stone-300/40'}`} disabled={isCurrentFavorite && isJournalUnchanged || !currentVerse}>{isCurrentFavorite ? <><Heart className={`w-4 h-4 ${isJournalUnchanged ? 'fill-stone-500' : ''}`} /> {isJournalUnchanged ? "已收藏" : "更新收藏"}</> : <><Save className="w-4 h-4" /> 保存收藏</>}</button>
+                        <button onClick={handleSaveFavorite} className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all active:scale-95 ${isCurrentFavorite && isJournalUnchanged ? 'bg-stone-200 text-stone-500 cursor-default' : 'bg-stone-600 text-white hover:bg-stone-700 shadow-lg shadow-stone-300/40'}`} disabled={isCurrentFavorite && isJournalUnchanged || !currentVerse}>{isCurrentFavorite ? <><Heart className={`w-4 h-4 ${isJournalUnchanged ? 'fill-stone-500' : ''}`} /> {isJournalUnchanged ? "已收藏" : "更新"}</> : <><Save className="w-4 h-4" /> 保存</>}</button>
                     </div>
                 </div>
             </div>
@@ -1451,7 +1376,54 @@ function GodIsWithYouApp() {
       </main>
       
       {notification && (<div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 ease-out animate-in fade-in slide-in-from-bottom-2"><div className="bg-stone-200/90 backdrop-blur-sm border border-stone-300 text-stone-600 text-sm font-bold py-3 px-6 rounded-full shadow-xl">{notification}</div></div>)}
-      {showModal && (<div className="fixed inset-0 z-40 bg-gray-900/40 backdrop-blur-sm flex justify-center items-end sm:items-center p-0 sm:p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}><div className="bg-gray-50 w-full max-w-lg h-[90%] sm:h-auto sm:max-h-[90vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col"><header className="flex justify-between items-center p-5 border-b border-gray-200 bg-white rounded-t-2xl sticky top-0"><h2 className="text-xl font-bold text-gray-800">{activeTab === 'favorites' ? '我的收藏經文' : '瀏覽歷史'}</h2><button onClick={() => setShowModal(false)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors"><X className="w-6 h-6" /></button></header><div className="flex justify-center p-4 bg-white sticky top-[69px] border-b border-gray-100 z-10"><button onClick={() => setActiveTab('favorites')} className={`px-4 py-2 text-sm font-medium rounded-full ${activeTab === 'favorites' ? 'bg-stone-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}><Heart className="w-4 h-4 mr-1 inline fill-current" /> 收藏 ({favorites.length})</button><button onClick={() => setActiveTab('history')} className={`px-4 py-2 text-sm font-medium rounded-full ml-2 ${activeTab === 'history' ? 'bg-stone-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}><History className="w-4 h-4 mr-1 inline" /> 歷史 ({history.length})</button></div><div className="flex-1 p-4 overflow-y-auto custom-scrollbar">{activeTab === 'favorites' && (favorites.length > 0 ? favorites.map((fav) => (<VerseListItem key={fav.text} verse={fav} isFavorite={true} onRemove={handleRemoveFavorite} onShare={handleShareCollected} onEdit={handleEditClick} />)) : <div className="text-center py-10 text-gray-500"><Heart className="w-8 h-8 mx-auto mb-2 text-gray-400" /><p>您尚未收藏任何經文。</p></div>)}{activeTab === 'history' && (history.length > 0 ? history.map((hist) => (<div key={hist.id} className="flex flex-col p-4 bg-white rounded-xl shadow-sm border border-gray-100 mb-3"><p className="text-sm font-medium text-gray-800">{hist.text}</p><p className="text-xs text-gray-500 mt-1 italic">{hist.textEn}</p><p className="text-xs text-gray-500 mt-2 font-medium">{hist.reference} <span className="text-gray-400 italic">({hist.referenceEn})</span></p><div className="flex items-center text-xs text-gray-400 mt-2"><Clock className="w-3 h-3 mr-1" /><span className="font-mono">{formatDateTime(hist.timestamp)}</span></div></div>)) : <div className="text-center py-10 text-gray-500"><History className="w-8 h-8 mx-auto mb-2 text-gray-400" /><p>尚未有瀏覽歷史記錄。</p></div>)}</div><footer className="p-3 border-t border-gray-200 text-center text-xs text-gray-400 bg-white rounded-b-2xl"><p>內容來自和合本(CUV)及NIV</p></footer></div></div>)}
+      
+      {/* 彈出視窗 (Modal) */}
+      {showModal && (
+        <div className="fixed inset-0 z-40 bg-gray-900/40 backdrop-blur-sm flex justify-center items-end sm:items-center p-0 sm:p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
+            <div className="bg-gray-50 w-full max-w-lg h-[90%] sm:h-auto sm:max-h-[90vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col">
+                <header className="flex justify-between items-center p-5 border-b border-gray-200 bg-white rounded-t-2xl sticky top-0">
+                    <h2 className="text-xl font-bold text-gray-800">
+                        {activeTab === 'favorites' ? '我的收藏' : activeTab === 'history' ? '瀏覽歷史' : '設定與備份'}
+                    </h2>
+                    <button onClick={() => setShowModal(false)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors"><X className="w-6 h-6" /></button>
+                </header>
+                
+                <div className="flex justify-center p-4 bg-white sticky top-[69px] border-b border-gray-100 z-10 gap-2">
+                    <button onClick={() => setActiveTab('favorites')} className={`px-4 py-2 text-sm font-medium rounded-full ${activeTab === 'favorites' ? 'bg-stone-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}><Heart className="w-4 h-4 mr-1 inline fill-current" /> 收藏</button>
+                    <button onClick={() => setActiveTab('history')} className={`px-4 py-2 text-sm font-medium rounded-full ${activeTab === 'history' ? 'bg-stone-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}><History className="w-4 h-4 mr-1 inline" /> 歷史</button>
+                    <button onClick={() => setActiveTab('settings')} className={`px-4 py-2 text-sm font-medium rounded-full ${activeTab === 'settings' ? 'bg-stone-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}><Settings className="w-4 h-4 mr-1 inline" /> 設定</button>
+                </div>
+
+                <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
+                    {activeTab === 'favorites' && (favorites.length > 0 ? favorites.map((fav) => (<VerseListItem key={fav.text} verse={fav} isFavorite={true} onRemove={handleRemoveFavorite} onShare={handleShareCollected} onEdit={handleEditClick} />)) : <div className="text-center py-10 text-gray-500"><Heart className="w-8 h-8 mx-auto mb-2 text-gray-400" /><p>您尚未收藏任何經文。</p></div>)}
+                    {activeTab === 'history' && (history.length > 0 ? history.map((hist) => (<div key={hist.id} className="flex flex-col p-4 bg-white rounded-xl shadow-sm border border-gray-100 mb-3"><p className="text-sm font-medium text-gray-800">{hist.text}</p><p className="text-xs text-gray-500 mt-1 italic">{hist.textEn}</p><p className="text-xs text-gray-500 mt-2 font-medium">{hist.reference} <span className="text-gray-400 italic">({hist.referenceEn})</span></p><div className="flex items-center text-xs text-gray-400 mt-2"><Clock className="w-3 h-3 mr-1" /><span className="font-mono">{formatDateTime(hist.timestamp)}</span></div></div>)) : <div className="text-center py-10 text-gray-500"><History className="w-8 h-8 mx-auto mb-2 text-gray-400" /><p>尚未有瀏覽歷史記錄。</p></div>)}
+                    
+                    {activeTab === 'settings' && (
+                        <div className="p-4 space-y-6">
+                            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                                <h3 className="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2"><Download className="w-5 h-5 text-stone-600" /> 資料備份</h3>
+                                <p className="text-sm text-gray-500 mb-4">將您的收藏與日記下載成檔案，以防止資料遺失。請定期備份。</p>
+                                <button onClick={handleBackup} className="w-full py-3 bg-stone-100 hover:bg-stone-200 text-stone-700 font-bold rounded-lg transition-colors border border-stone-300">下載備份檔案 (.json)</button>
+                            </div>
+                            <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                                <h3 className="text-lg font-bold text-gray-800 mb-2 flex items-center gap-2"><Upload className="w-5 h-5 text-stone-600" /> 資料還原</h3>
+                                <p className="text-sm text-gray-500 mb-4">選取您之前備份的檔案來恢復資料。這將會覆蓋目前的紀錄。</p>
+                                <label className="flex items-center justify-center w-full py-3 bg-stone-600 hover:bg-stone-700 text-white font-bold rounded-lg cursor-pointer transition-colors shadow-md">
+                                    <span>選取備份檔案並還原</span>
+                                    <input type="file" accept=".json" onChange={handleRestore} className="hidden" />
+                                </label>
+                            </div>
+                            <div className="text-center text-xs text-gray-400 mt-8">
+                                <p>神對我吹氣 (God Is With You) v2.2</p>
+                                <p>資料僅儲存於您的裝置中，保障隱私安全。</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+                <footer className="p-3 border-t border-gray-200 text-center text-xs text-gray-400 bg-white rounded-b-2xl"><p>內容來自和合本(CUV)及NIV</p></footer>
+            </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -1460,6 +1432,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

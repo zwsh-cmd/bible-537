@@ -1157,7 +1157,10 @@ function GodIsWithYouApp() {
   const [notification, setNotification] = useState(null);
   const [journalInput, setJournalInput] = useState("");
   const [editingVerse, setEditingVerse] = useState(null);
-  const [recentIndices, setRecentIndices] = useState([]); 
+  const [recentIndices, setRecentIndices] = useState([]);
+  // 滑動手勢狀態
+  const [touchStart, setTouchStart] = useState(null);
+  const [touchEnd, setTouchEnd] = useState(null);
   
   const isScripturesEmpty = SCRIPTURES.length === 0;
 
@@ -1349,6 +1352,28 @@ function GodIsWithYouApp() {
     if (currentVerse && currentVerse.text === editingVerse.text) setJournalInput(updatedText);
     setEditingVerse(null); showNotification("日記已更新");
   };
+    
+  // === 新增：滑動手勢偵測函式 ===
+  const minSwipeDistance = 50; // 至少要滑動 50px 才算數
+
+  const onTouchStart = (e) => {
+    setTouchEnd(null); // 重置結束點
+    setTouchStart(e.targetTouches[0].clientX); // 記錄開始按下的 X 座標
+  };
+
+  const onTouchMove = (e) => {
+    setTouchEnd(e.targetTouches[0].clientX); // 持續更新手指位置
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance; // 起點減終點 > 50 表示向左滑
+    
+    if (isLeftSwipe) {
+      handleNextVerse(); // 觸發「下一條經文」
+    }
+  };
 
   // ★★★ 修改點 3：收藏列表顯示英文經文 ★★★
   const VerseListItem = ({ verse, isFavorite, onRemove, onShare, onEdit }) => (
@@ -1390,7 +1415,11 @@ function GodIsWithYouApp() {
 
       <main className="flex flex-col items-center px-4 sm:px-6 py-8 max-w-lg mx-auto w-full">
         <div className="w-full relative mb-6">
-          <div className="relative bg-white rounded-2xl shadow-xl p-8 sm:p-10 border border-gray-200 min-h-[200px] flex items-center justify-center">
+          <div 
+            onTouchStart={onTouchStart} 
+            onTouchMove={onTouchMove} 
+            onTouchEnd={onTouchEnd}          
+            className="relative bg-white rounded-2xl shadow-xl p-8 sm:p-10 border border-gray-200 min-h-[200px] flex items-center justify-center">
             {currentVerse ? (
               <div className={`w-full transition-all duration-500 ease-out transform ${isAnimating ? 'opacity-0 translate-y-2 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}>
                 <div className="mb-6">
@@ -1483,6 +1512,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

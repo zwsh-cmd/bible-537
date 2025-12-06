@@ -1355,8 +1355,8 @@ function GodIsWithYouApp() {
     <div className="flex flex-col p-4 bg-white rounded-xl shadow-sm border border-gray-100 mb-3">
       <div className="flex justify-between items-start">
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-gray-800 leading-relaxed truncate-3-lines">{verse.text}</p>
-          <p className="text-xs text-gray-500 mt-1 italic font-bold">{verse.textEn}</p>
+          <p className="text-sm font-extrabold text-gray-800 leading-relaxed truncate-3-lines">{verse.text}</p>
+          <p className="text-xs text-gray-500 mt-1 italic font-extrabold">{verse.textEn}</p>
           <p className="text-xs text-gray-500 mt-2 font-medium">{verse.reference} <span className="text-gray-400 italic">({verse.referenceEn})</span></p>
           <div className="flex items-center text-xs text-gray-400 mt-2"><Calendar className="w-3 h-3 mr-1" /><span className="font-mono">{formatDateTime(verse.timestamp)}</span></div>
         </div>
@@ -1483,6 +1483,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

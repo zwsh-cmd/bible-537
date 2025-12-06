@@ -1420,7 +1420,15 @@ function GodIsWithYouApp() {
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-700 font-sans relative selection:bg-gray-200">
-      <style>{`.custom-scrollbar::-webkit-scrollbar { width: 6px; } .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #d1d5db; border-radius: 10px; } .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } .truncate-3-lines { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; } .journal-textarea { min-height: 80px; max-height: 300px; } .whitespace-nowrap { white-space: nowrap; }`}</style>
+      <style>{`
+          html, body { overscroll-behavior-y: none; background-color: #f9fafb; }
+          .custom-scrollbar::-webkit-scrollbar { width: 6px; } 
+          .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #d1d5db; border-radius: 10px; } 
+          .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } 
+          .truncate-3-lines { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; } 
+          .journal-textarea { min-height: 80px; max-height: 300px; } 
+          .whitespace-nowrap { white-space: nowrap; }
+      `}</style>
       {editingVerse && <EditJournalView editingVerse={editingVerse} setEditingVerse={setEditingVerse} onUpdate={handleUpdateJournal} maxLength={MAX_JOURNAL_LENGTH} />}
 
       <nav className="flex justify-between items-center p-4 sm:p-6 bg-white/70 backdrop-blur-sm sticky top-0 z-10 border-b border-gray-200/50">
@@ -1563,6 +1571,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

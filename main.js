@@ -1279,7 +1279,8 @@ function GodIsWithYouApp() {
       const foundFav = favorites.find(f => f.text === newVerse.text);
       if (foundFav) setJournalInput(foundFav.journalEntry || "");
       addToHistory(newVerse); 
-      setIsAnimating(false); window.scrollTo({ top: 0, behavior: 'auto' });
+      setIsAnimating(false);
+      setTimeout(() => window.scrollTo(0, 0), 50); // 這裡是修改的重點
     }, 300);
   };
 
@@ -1562,6 +1563,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

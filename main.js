@@ -1296,6 +1296,23 @@ function GodIsWithYouApp() {
     showNotification(isCurrentFavorite && !isJournalUnchanged ? "日記已更新並保存" : "已加入收藏");
   };
 
+// === v39 新增：從歷史紀錄補收藏 ===
+  const handleAddFromHistory = (historyVerse) => {
+    // 檢查是否已經在收藏中 (避免重複)
+    if (favorites.some(f => f.text === historyVerse.text)) {
+        showNotification("這則經文已經在收藏裡囉！");
+        return;
+    }
+    // 建立新的收藏物件 (時間更新為現在，這樣才會排在最前面)
+    const newFav = { 
+        ...historyVerse, 
+        timestamp: new Date().toISOString(), 
+        journalEntry: "" 
+    };
+    setFavorites(prev => [newFav, ...prev]);
+    showNotification("已補加入收藏！");
+  };
+    
   const handleRemoveFavorite = (textToRemove) => {
      setFavorites(favorites.filter(f => f.text !== textToRemove));
      if (currentVerse && currentVerse.text === textToRemove) setJournalInput("");
@@ -1476,7 +1493,40 @@ function GodIsWithYouApp() {
 
                 <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
                     {activeTab === 'favorites' && (favorites.length > 0 ? favorites.map((fav) => (<VerseListItem key={fav.text} verse={fav} isFavorite={true} onRemove={handleRemoveFavorite} onShare={handleShareCollected} onEdit={handleEditClick} />)) : <div className="text-center py-10 text-gray-500"><Heart className="w-8 h-8 mx-auto mb-2 text-gray-400" /><p>您尚未收藏任何經文。</p></div>)}
-                    {activeTab === 'history' && (history.length > 0 ? history.map((hist) => (<div key={hist.id} className="flex flex-col p-4 bg-white rounded-xl shadow-sm border border-gray-100 mb-3"><p className="text-sm font-medium text-gray-800">{hist.text}</p><p className="text-xs text-gray-500 mt-1 italic">{hist.textEn}</p><p className="text-xs text-gray-500 mt-2 font-medium">{hist.reference} <span className="text-gray-400 italic">({hist.referenceEn})</span></p><div className="flex items-center text-xs text-gray-400 mt-2"><Clock className="w-3 h-3 mr-1" /><span className="font-mono">{formatDateTime(hist.timestamp)}</span></div></div>)) : <div className="text-center py-10 text-gray-500"><History className="w-8 h-8 mx-auto mb-2 text-gray-400" /><p>尚未有瀏覽歷史記錄。</p></div>)}
+                    {activeTab === 'history' && (history.length > 0 ? history.map((hist) => {
+                        const isAlreadyFav = favorites.some(f => f.text === hist.text);
+                        const favVersion = isAlreadyFav ? favorites.find(f => f.text === hist.text) : null;
+                        
+                        return (
+                            <div key={hist.id} className="flex flex-col p-4 bg-white rounded-xl shadow-sm border border-gray-100 mb-3">
+                                <p className="text-sm font-medium text-gray-800">{hist.text}</p>
+                                <p className="text-xs text-gray-500 mt-1 italic">{hist.textEn}</p>
+                                <p className="text-xs text-gray-500 mt-2 font-medium">{hist.reference} <span className="text-gray-400 italic">({hist.referenceEn})</span></p>
+                                
+                                <div className="flex justify-between items-center mt-3 border-t border-gray-100 pt-2">
+                                    <div className="flex items-center text-xs text-gray-400">
+                                        <Clock className="w-3 h-3 mr-1" /><span className="font-mono">{formatDateTime(hist.timestamp)}</span>
+                                    </div>
+                                    
+                                    {!isAlreadyFav ? (
+                                        <button 
+                                            onClick={() => handleAddFromHistory(hist)} 
+                                            className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-stone-100 text-stone-600 hover:bg-stone-200 transition-colors"
+                                        >
+                                            <Heart className="w-3 h-3" /> 補收藏
+                                        </button>
+                                    ) : (
+                                        <button 
+                                            onClick={() => handleEditClick(favVersion)} 
+                                            className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-white border border-stone-200 text-stone-500 hover:bg-stone-50 transition-colors"
+                                        >
+                                            <Edit className="w-3 h-3" /> 編輯回應
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    }) : <div className="text-center py-10 text-gray-500"><History className="w-8 h-8 mx-auto mb-2 text-gray-400" /><p>尚未有瀏覽歷史記錄。</p></div>)}
                     
                     {activeTab === 'settings' && (
                         <div className="p-4 space-y-6">
@@ -1512,6 +1562,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

@@ -1279,7 +1279,7 @@ function GodIsWithYouApp() {
       const foundFav = favorites.find(f => f.text === newVerse.text);
       if (foundFav) setJournalInput(foundFav.journalEntry || "");
       addToHistory(newVerse); 
-      setIsAnimating(false); window.scrollTo({ top: 0, behavior: 'smooth' });
+      setIsAnimating(false); window.scrollTo({ top: 0, behavior: 'auto' });
     }, 300);
   };
 
@@ -1562,6 +1562,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

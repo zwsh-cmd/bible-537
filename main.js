@@ -1369,7 +1369,7 @@ function GodIsWithYouApp() {
       {verse.journalEntry && verse.journalEntry.trim() && (
         <div className="mt-3 pt-3 border-t border-gray-100">
           <p className="text-xs font-bold text-gray-600 mb-1 flex items-center gap-1"><PenLine className="w-3 h-3" /> 回應</p>
-          <p className="text-sm text-gray-700 italic bg-gray-50 p-2 rounded-lg">{verse.journalEntry}</p>
+          <p className="text-sm text-gray-700 italic bg-gray-50 p-2 rounded-lg" style={{ whiteSpace: 'pre-wrap' }}>{verse.journalEntry}</p>
         </div>
       )}
     </div>
@@ -1483,6 +1483,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

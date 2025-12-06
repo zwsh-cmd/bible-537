@@ -1434,7 +1434,7 @@ function GodIsWithYouApp() {
                 {/* ★★★ 修改點 1：收藏標題顯示數量 ★★★ */}
                 <header className="flex justify-between items-center p-5 border-b border-gray-200 bg-white rounded-t-2xl sticky top-0">
                     <h2 className="text-xl font-bold text-gray-800">
-                        {activeTab === 'favorites' ? `我的收藏 (${favorites.length})` : activeTab === 'history' ? '瀏覽歷史' : '設定與備份'}
+                        {activeTab === 'favorites' ? `我的收藏 (${favorites.length})` : activeTab === 'history' ? '瀏覽歷史' : '備份'}
                     </h2>
                     <button onClick={() => setShowModal(false)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors"><X className="w-6 h-6" /></button>
                 </header>
@@ -1442,7 +1442,7 @@ function GodIsWithYouApp() {
                 <div className="flex justify-center p-4 bg-white sticky top-[69px] border-b border-gray-100 z-10 gap-2">
                     <button onClick={() => setActiveTab('favorites')} className={`px-4 py-2 text-sm font-medium rounded-full ${activeTab === 'favorites' ? 'bg-stone-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}><Heart className="w-4 h-4 mr-1 inline fill-current" /> 收藏</button>
                     <button onClick={() => setActiveTab('history')} className={`px-4 py-2 text-sm font-medium rounded-full ${activeTab === 'history' ? 'bg-stone-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}><History className="w-4 h-4 mr-1 inline" /> 歷史</button>
-                    <button onClick={() => setActiveTab('settings')} className={`px-4 py-2 text-sm font-medium rounded-full ${activeTab === 'settings' ? 'bg-stone-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}><Settings className="w-4 h-4 mr-1 inline" /> 設定</button>
+                    <button onClick={() => setActiveTab('settings')} className={`px-4 py-2 text-sm font-medium rounded-full ${activeTab === 'settings' ? 'bg-stone-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}><Save className="w-4 h-4 mr-1 inline" /> 備份</button>
                 </div>
 
                 <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
@@ -1465,7 +1465,7 @@ function GodIsWithYouApp() {
                                 </label>
                             </div>
                             <div className="text-center text-xs text-gray-400 mt-8">
-                                <p>神對我吹氣 (God Is With You) v2.2</p>
+                                <p>神對我吹氣 (God Is With You) </p>
                                 <p>資料僅儲存於您的裝置中，保障隱私安全。</p>
                             </div>
                         </div>
@@ -1483,6 +1483,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

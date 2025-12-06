@@ -627,12 +627,16 @@ const formatDateTime = (dateInput) => {
 // 排版優化 V19：完整詞庫補完 + 雙層防護邏輯
 // 排版優化 V20：頓號修復 + 完整詞庫分類整理 + 雙層防護
 // 排版優化 V21：最終詞庫補完 (去重整理) + 雙層防護邏輯
+// 排版優化 V29：主畫面與圖片邏輯完全同步 (含完整詞庫 + 英文智慧平衡)
 const formatTextNoOrphan = (text) => {
     if (!text || typeof text !== 'string') return text;
 
-    // 1. 定義詞庫 (已包含 V20 + V21 所有指定詞彙，去重並分類)
+    // 1. 定義詞庫 (V21完整版 + V28新增詞彙)
     const keepTogetherWords = [
-        // --- 長句/片語 (優先級高) ---
+        // V28 新增
+        "得要", "憐恤", "樂意",
+
+        // V21 完整列表
         "在基督耶穌裡的", "差我來者的", "腳前的燈", "路上的光", "充充滿滿", 
         "又大又難", "永永遠遠", "一生一世", "出死入生", "神的話", "我的名", "奉我的名",
         "他的面", "獨生子", "愛人如己", "基督的愛", "神的愛", "他的國", "他的義",
@@ -641,12 +645,12 @@ const formatTextNoOrphan = (text) => {
         "基督裡", "弟兄中", "姊妹中", "受欺壓", "以惡報惡", "眾光之父",
         "果效", "果子", "得勝", "你的神", "便是", "什麼", "哪裡", "時候", "然而", "有餘",
 
-        // --- 神格/人名/地名 ---
+        // 神格/人名/地名
         "耶和華", "耶穌", "基督", "聖靈", "上帝", "主耶穌", "父神", "天父", "造天地",
         "十字架", "救世主", "彌賽亞", "全能者", "至高者", "以色列", "耶路撒冷",
         "法利賽人", "撒都該人", "外邦人", "門徒", "使徒", "先知", "祭司", "選民", "窯匠",
 
-        // --- 抽象名詞/核心概念 ---
+        // 抽象名詞/核心概念
         "國度", "天國", "世界", "天地", "全地", "權勢", "權柄", "能力", "榮耀", "智慧", "知識", "聰明",
         "真理", "生命", "道路", "恩典", "慈愛", "憐憫", "救恩", "律法", "訓誨", "命令", "寶座",
         "心裡", "意念", "信心", "愛心", "重擔", "憂慮", "患難", "困苦", "逼迫", "危險", "試探",
@@ -654,7 +658,7 @@ const formatTextNoOrphan = (text) => {
         "聖殿", "教會", "聚會", "眼淚", "死亡", "悲哀", "哭號", "疼痛", "復活", "永生", 
         "定罪", "犯罪", "過失", "欺壓", "黑暗", "聲音", "力量", "行為", "賞賜", "富足", "全備",
 
-        // --- 動詞/動作 ---
+        // 動詞/動作
         "稱頌", "敬畏", "仰望", "等候", "尋求", "倚靠", "投靠", "感謝", "感謝神", "感謝主", "讚美", 
         "事奉", "禱告", "跟隨", "順服", "聽從", "遵守", "相信", "信靠", "交託", "尋找", "求告", "指示",
         "拯救", "幫助", "保護", "引導", "扶持", "堅固", "遮蔽", "醫治", "赦免", "饒恕", "忘記",
@@ -663,25 +667,25 @@ const formatTextNoOrphan = (text) => {
         "數點", "稱呼", "擦去", "過去", "留下", "賜給", "所賜", "跌倒", "臨近", "順利",
         "隔絕", "活著", "安慰", "牧養", "增長",
 
-        // --- 形容詞/狀態 ---
+        // 形容詞/狀態
         "喜樂", "平安", "忍耐", "良善", "信實", "節制", "聖潔", "公義", "完全", "美好",
         "剛強", "壯膽", "懼怕", "驚惶", "膽怯", "軟弱", "疲乏", "愚昧", "通達",
         "盡心", "盡性", "盡意", "盡力", "專心", "誠實", "謙卑", "溫柔", "清潔", "和平",
         "仁愛", "恩慈", "純全", "善良", "為寶", "為尊", "單單", "僅僅", "惟獨",
         "常常", "永遠", "世世", "從前", "如今", "將來", "昨日", "今日", "明日",
 
-        // --- 虛詞/代詞 ---
+        // 虛詞/代詞
         "你們", "我們", "他們", "自己", "一切", "所有", "各樣", "諸般",
         "因為", "所以", "雖然", "但是", "只是", "如果", "若是", "無論",
         "甚至", "並且", "而且", "以及", "還是", "或者", "不像",
         "不要", "不可", "不能", "不會", "不敢", "不致", "不至", "必定", "因此"
     ];
 
-    // 2. 製作關鍵詞正則 (按長度排序，確保長詞優先)
+    // 2. 製作關鍵詞正則
     keepTogetherWords.sort((a, b) => b.length - a.length);
     const wordRegex = new RegExp(`(${keepTogetherWords.join("|")})`, "g");
 
-    // 3. 輔助函式：處理「的」字黏著 (將 "X的" 視為一體，防止 "的" 在行首)
+    // 3. 輔助函式：處理「的」字黏著
     const processDe = (str) => {
         if (!str) return null;
         const parts = str.split(/(.{1}的)/);
@@ -694,7 +698,6 @@ const formatTextNoOrphan = (text) => {
     };
 
     // 4. 第一層切割：依據「強標點」強制換行
-    // 強標點：句號、驚嘆號、問號、冒號
     const strongParts = text.split(/([。？！：?!:][”’」』]?)/);
     const lines = [];
 
@@ -706,7 +709,6 @@ const formatTextNoOrphan = (text) => {
             const fullLine = segment + mark;
             
             // 5. 第二層切割：依據「弱標點」切成彈性積木
-            // 頓號「、」和省略號「...」都包含在內
             const weakParts = fullLine.split(/(\.{3}|[，；、,;…][”’」』]?)/);
             const blocks = [];
 
@@ -718,11 +720,9 @@ const formatTextNoOrphan = (text) => {
                     // 6. 第三層處理：關鍵詞保護 + 「的」字處理
                     const protectedParts = subText.split(wordRegex);
                     const content = protectedParts.map((part, k) => {
-                        // 如果是關鍵詞，直接包 span nowrap
                         if (keepTogetherWords.includes(part)) {
                             return <span key={k} className="whitespace-nowrap">{part}</span>;
                         }
-                        // 如果是普通文字，再檢查有沒有「的」
                         return <span key={k}>{processDe(part)}</span>;
                     });
 
@@ -757,7 +757,7 @@ const formatEnglishTextNoOrphan = (text) => {
     return <>{head} <span className="whitespace-nowrap">{tail}</span></>;
 };
 
-// 排版邏輯 V8 (最終修復版)：神名不換行 + 標點避頭 + 智慧平衡 + 英文修復
+// 排版邏輯 V28：圖片生成專用 (含 V21 完整詞庫 + V27 英文平衡)
 const getLines = (ctx, text, maxWidth) => {
     // 0. 全局判斷語言
     const hasChinese = /[\u4e00-\u9fa5]/.test(text);
@@ -765,14 +765,51 @@ const getLines = (ctx, text, maxWidth) => {
 
     // 1. 核心切分邏輯
     const computeLines = (limitWidth) => {
-        // === 中文邏輯 (特殊處理：神名不換行) ===
+        // === 中文邏輯 (與 formatTextNoOrphan 詞庫完全同步) ===
         if (!isEnglish) {
             // 定義「不可拆散」的關鍵詞清單
             const keepTogetherWords = [
-                "耶和華", "耶穌", "基督", "聖靈", "上帝", "主耶穌", "父神",
-                "亞伯拉罕", "以撒", "雅各", "摩西", "大衛", "所羅門", 
-                "保羅", "彼得", "約翰", "馬利亞",
-                "耶路撒冷", "以色列", "法利賽人", "撒都該人"
+                // V28 新增
+                "得要", "憐恤", "樂意",
+
+                // V21 完整列表 (略微重複以確保獨立運作)
+                "在基督耶穌裡的", "差我來者的", "腳前的燈", "路上的光", "充充滿滿", 
+                "又大又難", "永永遠遠", "一生一世", "出死入生", "神的話", "我的名", "奉我的名",
+                "他的面", "獨生子", "愛人如己", "基督的愛", "神的愛", "他的國", "他的義",
+                "所需用的", "無比", "的水", "陳明", "所求", "景況", "緣故", "愛子", 
+                "所出", "數算", "向你", "向你們", "同在", "都要", "因你", "的事上", 
+                "基督裡", "弟兄中", "姊妹中", "受欺壓", "以惡報惡", "眾光之父",
+                "果效", "果子", "得勝", "你的神", "便是", "什麼", "哪裡", "時候", "然而", "有餘",
+
+                "耶和華", "耶穌", "基督", "聖靈", "上帝", "主耶穌", "父神", "天父", "造天地",
+                "十字架", "救世主", "彌賽亞", "全能者", "至高者", "以色列", "耶路撒冷",
+                "法利賽人", "撒都該人", "外邦人", "門徒", "使徒", "先知", "祭司", "選民", "窯匠",
+
+                "國度", "天國", "世界", "天地", "全地", "權勢", "權柄", "能力", "榮耀", "智慧", "知識", "聰明",
+                "真理", "生命", "道路", "恩典", "慈愛", "憐憫", "救恩", "律法", "訓誨", "命令", "寶座",
+                "心裡", "意念", "信心", "愛心", "重擔", "憂慮", "患難", "困苦", "逼迫", "危險", "試探",
+                "刀劍", "網羅", "陷阱", "盾牌", "山寨", "避難所", "保障", "磐石", "高臺", "活水", "靈糧",
+                "聖殿", "教會", "聚會", "眼淚", "死亡", "悲哀", "哭號", "疼痛", "復活", "永生", 
+                "定罪", "犯罪", "過失", "欺壓", "黑暗", "聲音", "力量", "行為", "賞賜", "富足", "全備",
+
+                "稱頌", "敬畏", "仰望", "等候", "尋求", "倚靠", "投靠", "感謝", "感謝神", "感謝主", "讚美", 
+                "事奉", "禱告", "跟隨", "順服", "聽從", "遵守", "相信", "信靠", "交託", "尋找", "求告", "指示",
+                "拯救", "幫助", "保護", "引導", "扶持", "堅固", "遮蔽", "醫治", "赦免", "饒恕", "忘記",
+                "洗淨", "充滿", "澆灌", "運行", "感動", "啟示", "光照", "鑒察", "潔淨", "脫離",
+                "行道", "聽道", "欺哄", "論斷", "相愛", "彼此", "和睦", "同心", "同去", "同得", "聚集",
+                "數點", "稱呼", "擦去", "過去", "留下", "賜給", "所賜", "跌倒", "臨近", "順利",
+                "隔絕", "活著", "安慰", "牧養", "增長",
+
+                "喜樂", "平安", "忍耐", "良善", "信實", "節制", "聖潔", "公義", "完全", "美好",
+                "剛強", "壯膽", "懼怕", "驚惶", "膽怯", "軟弱", "疲乏", "愚昧", "通達",
+                "盡心", "盡性", "盡意", "盡力", "專心", "誠實", "謙卑", "溫柔", "清潔", "和平",
+                "仁愛", "恩慈", "純全", "善良", "為寶", "為尊", "單單", "僅僅", "惟獨",
+                "常常", "永遠", "世世", "從前", "如今", "將來", "昨日", "今日", "明日",
+
+                "你們", "我們", "他們", "自己", "一切", "所有", "各樣", "諸般",
+                "因為", "所以", "雖然", "但是", "只是", "如果", "若是", "無論",
+                "甚至", "並且", "而且", "以及", "還是", "或者", "不像",
+                "不要", "不可", "不能", "不會", "不敢", "不致", "不至", "必定", "因此"
             ];
 
             const regex = new RegExp(`(${keepTogetherWords.join("|")})`, "g");
@@ -810,40 +847,33 @@ const getLines = (ctx, text, maxWidth) => {
             return lines;
         }
 
-        // === 英文邏輯 ===
+        // === 英文邏輯 (V27 智慧平衡) ===
         const words = text.split(' ');
+        let totalEnglishWidth = 0;
+        words.forEach(w => totalEnglishWidth += ctx.measureText(w + " ").width);
+
+        let englishLimit = limitWidth;
+        if (totalEnglishWidth > limitWidth) {
+            const estimatedLines = Math.ceil(totalEnglishWidth / limitWidth);
+            const balancedWidth = (totalEnglishWidth / estimatedLines) * 1.1;
+            englishLimit = Math.max(balancedWidth, limitWidth * 0.6);
+        }
+
         let lines = [];
-        let currentLine = ""; 
-        for (let i = 0; i < words.length; i++) {
+        let currentLine = words[0]; 
+
+        for (let i = 1; i < words.length; i++) {
             let word = words[i];
-            const wordWidth = ctx.measureText(word).width;
+            const currentWidth = ctx.measureText(currentLine + " " + word).width;
             
-            if (wordWidth > limitWidth) {
-                if (currentLine !== "") { lines.push(currentLine); currentLine = ""; }
-                let remainingWord = word;
-                while (ctx.measureText(remainingWord).width > limitWidth) {
-                    let splitIndex = 0; let tempStr = "";
-                    while (splitIndex < remainingWord.length) {
-                        let char = remainingWord[splitIndex];
-                        if (ctx.measureText(tempStr + char + "-").width < limitWidth) {
-                            tempStr += char; splitIndex++;
-                        } else { break; }
-                    }
-                    lines.push(tempStr + "-");
-                    remainingWord = remainingWord.substring(splitIndex);
-                }
-                currentLine = remainingWord;
+            if (currentWidth < englishLimit) {
+                currentLine += " " + word;
             } else {
-                const space = currentLine === "" ? "" : " ";
-                if (ctx.measureText(currentLine + space + word).width < limitWidth) {
-                    currentLine += space + word;
-                } else {
-                    lines.push(currentLine);
-                    currentLine = word;
-                }
+                lines.push(currentLine);
+                currentLine = word;
             }
         }
-        if (currentLine !== "") lines.push(currentLine);
+        lines.push(currentLine);
         return lines;
     };
 
@@ -1344,7 +1374,7 @@ function GodIsWithYouApp() {
               <div className={`w-full transition-all duration-500 ease-out transform ${isAnimating ? 'opacity-0 translate-y-2 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}>
                 <div className="mb-6">
                   <p className="text-2xl sm:text-3xl leading-relaxed text-gray-800 text-center tracking-wide text-balance mb-4 font-medium">{formatTextNoOrphan(currentVerse.text)}</p>
-                  <p className="text-base sm:text-lg leading-relaxed text-gray-500 text-center font-serif italic">{formatEnglishTextNoOrphan(currentVerse.textEn)}</p>
+                  <p className="text-base sm:text-lg leading-relaxed text-gray-500 text-center font-serif italic text-balance">{formatEnglishTextNoOrphan(currentVerse.textEn)}</p>
                 </div>
                 <div className="flex flex-col items-center justify-center border-t border-gray-200 pt-3 text-gray-500">
                   <p className="text-sm font-medium tracking-widest uppercase">— {currentVerse.reference} —</p>
@@ -1432,6 +1462,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

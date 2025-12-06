@@ -1159,8 +1159,9 @@ function GodIsWithYouApp() {
   const [editingVerse, setEditingVerse] = useState(null);
   const [recentIndices, setRecentIndices] = useState([]);
   // 滑動手勢狀態
+  // 手勢狀態 (整合版)
   const [touchStart, setTouchStart] = useState(null);
-  const [touchEnd, setTouchEnd] = useState(null);
+  const [touchCurrent, setTouchCurrent] = useState(null);
   
   const isScripturesEmpty = SCRIPTURES.length === 0;
 
@@ -1374,22 +1375,29 @@ function GodIsWithYouApp() {
   // === 新增：滑動手勢偵測函式 ===
   const minSwipeDistance = 50; // 至少要滑動 50px 才算數
 
+  // === v43 優化：整合手勢偵測 (左滑 + 下拉) ===
   const onTouchStart = (e) => {
-    setTouchEnd(null); // 重置結束點
-    setTouchStart(e.targetTouches[0].clientX); // 記錄開始按下的 X 座標
+    setTouchCurrent(null);
+    setTouchStart({ x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY });
   };
 
   const onTouchMove = (e) => {
-    setTouchEnd(e.targetTouches[0].clientX); // 持續更新手指位置
+    setTouchCurrent({ x: e.targetTouches[0].clientX, y: e.targetTouches[0].clientY });
   };
 
   const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance; // 起點減終點 > 50 表示向左滑
+    if (!touchStart || !touchCurrent) return;
     
-    if (isLeftSwipe) {
-      handleNextVerse(); // 觸發「下一條經文」
+    const diffX = touchStart.x - touchCurrent.x; // 正數代表向左滑
+    const diffY = touchCurrent.y - touchStart.y; // 正數代表向下滑 (下拉)
+
+    // 判斷是「水平滑動」還是「垂直滑動」
+    if (Math.abs(diffX) > Math.abs(diffY)) {
+        // 水平：左滑超過 50px -> 下一條
+        if (diffX > 50) handleNextVerse();
+    } else {
+        // 垂直：下拉超過 100px 且 畫面在最頂端 -> 下一條
+        if (diffY > 100 && window.scrollY === 0) handleNextVerse();
     }
   };
 
@@ -1421,7 +1429,18 @@ function GodIsWithYouApp() {
   return (
     <div className="min-h-screen bg-gray-50 text-gray-700 font-sans relative selection:bg-gray-200">
       <style>{`
-          html, body { overscroll-behavior-y: none; background-color: #f9fafb; }
+          html, body { 
+            overscroll-behavior-y: none; 
+            background-color: #f9fafb; 
+            height: 100%; 
+            margin: 0; 
+            padding: 0;
+          }
+          #root {
+            min-height: 100dvh;
+            display: flex;
+            flex-direction: column;
+          }
           .custom-scrollbar::-webkit-scrollbar { width: 6px; } 
           .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #d1d5db; border-radius: 10px; } 
           .custom-scrollbar::-webkit-scrollbar-track { background: transparent; } 
@@ -1429,6 +1448,7 @@ function GodIsWithYouApp() {
           .journal-textarea { min-height: 80px; max-height: 300px; } 
           .whitespace-nowrap { white-space: nowrap; }
       `}</style>
+
       {editingVerse && <EditJournalView editingVerse={editingVerse} setEditingVerse={setEditingVerse} onUpdate={handleUpdateJournal} maxLength={MAX_JOURNAL_LENGTH} />}
 
       <nav className="flex justify-between items-center p-4 sm:p-6 bg-white/70 backdrop-blur-sm sticky top-0 z-10 border-b border-gray-200/50">
@@ -1571,6 +1591,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

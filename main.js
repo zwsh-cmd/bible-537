@@ -1140,7 +1140,7 @@ function GodIsWithYouApp() {
         setRecentIndices(prev => {
             const currentRecents = JSON.parse(localStorage.getItem('godsPromisesRecents') || '[]');
             const newRecents = [initialIndex, ...currentRecents];
-            if (newRecents.length > 100) newRecents.pop();
+            if (newRecents.length > 200) newRecents.pop();
             return newRecents;
         });
         const initialVerse = SCRIPTURES[initialIndex];
@@ -1218,7 +1218,7 @@ function GodIsWithYouApp() {
       
       setRecentIndices(prev => {
           const newRecent = [newIndex, ...prev];
-          if (newRecent.length > 100) newRecent.pop();
+          if (newRecent.length > 200) newRecent.pop();
           return newRecent;
       });
       
@@ -1432,6 +1432,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

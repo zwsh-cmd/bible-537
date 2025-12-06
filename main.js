@@ -1153,7 +1153,7 @@ function GodIsWithYouApp() {
   const [favorites, setFavorites] = useState([]);
   const [history, setHistory] = useState([]); 
   const [showModal, setShowModal] = useState(false); 
-  const [activeTab, setActiveTab] = useState('favorites'); // 可能的值: 'favorites', 'history', 'settings'
+  const [activeTab, setActiveTab] = useState('favorites');
   const [notification, setNotification] = useState(null);
   const [journalInput, setJournalInput] = useState("");
   const [editingVerse, setEditingVerse] = useState(null);
@@ -1163,10 +1163,11 @@ function GodIsWithYouApp() {
 
   const addToHistory = useCallback((verse) => {
     const newEntry = { ...verse, id: Date.now(), timestamp: new Date().toISOString() };
-    setHistory(prev => [newEntry, ...prev].slice(0, 20));
+    // ★★★ 修改點 2：歷史紀錄增加到 50 條 ★★★
+    setHistory(prev => [newEntry, ...prev].slice(0, 50));
   }, []);
 
-  // 1. 初始化：讀取
+  // 1. 初始化
   useEffect(() => {
     let initialIndex = 0;
     try {
@@ -1183,12 +1184,14 @@ function GodIsWithYouApp() {
     if (!isScripturesEmpty) {
         initialIndex = Math.floor(Math.random() * SCRIPTURES.length);
         setCurrentIndex(initialIndex);
+        
         setRecentIndices(prev => {
             const currentRecents = JSON.parse(localStorage.getItem('godsPromisesRecents') || '[]');
             const newRecents = [initialIndex, ...currentRecents];
             if (newRecents.length > 200) newRecents.pop();
             return newRecents;
         });
+        
         const initialVerse = SCRIPTURES[initialIndex];
         addToHistory(initialVerse); 
         setTimeout(() => {
@@ -1201,7 +1204,7 @@ function GodIsWithYouApp() {
     }
   }, []);
 
-  // 2. 自動存檔 (收藏、歷史、防重複)
+  // 2. 自動存檔
   useEffect(() => { try { localStorage.setItem('godsPromisesFavorites', JSON.stringify(favorites)); } catch (e) {} }, [favorites]);
   useEffect(() => { try { localStorage.setItem('godsPromisesHistory', JSON.stringify(history)); } catch (e) {} }, [history]);
   useEffect(() => { try { localStorage.setItem('godsPromisesRecents', JSON.stringify(recentIndices)); } catch (e) {} }, [recentIndices]);
@@ -1214,13 +1217,13 @@ function GodIsWithYouApp() {
   const savedJournal = currentSavedFav?.journalEntry.trim() || '';
   const isJournalUnchanged = journalInput.trim() === savedJournal;
 
-  // --- V22 新增：備份與還原功能 ---
+  // 備份與還原
   const handleBackup = () => {
       const data = {
           favorites,
           history,
           recents: recentIndices,
-          version: "2.0",
+          version: "3.0",
           backupDate: new Date().toISOString()
       };
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -1347,12 +1350,14 @@ function GodIsWithYouApp() {
     setEditingVerse(null); showNotification("日記已更新");
   };
 
+  // ★★★ 修改點 3：收藏列表顯示英文經文 ★★★
   const VerseListItem = ({ verse, isFavorite, onRemove, onShare, onEdit }) => (
     <div className="flex flex-col p-4 bg-white rounded-xl shadow-sm border border-gray-100 mb-3">
       <div className="flex justify-between items-start">
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-gray-800 leading-relaxed truncate-3-lines">{verse.text}</p>
-          <p className="text-xs text-gray-500 mt-2 font-medium">{verse.reference}</p>
+          <p className="text-xs text-gray-500 mt-1 italic">{verse.textEn}</p>
+          <p className="text-xs text-gray-500 mt-2 font-medium">{verse.reference} <span className="text-gray-400 italic">({verse.referenceEn})</span></p>
           <div className="flex items-center text-xs text-gray-400 mt-2"><Calendar className="w-3 h-3 mr-1" /><span className="font-mono">{formatDateTime(verse.timestamp)}</span></div>
         </div>
         <div className="flex flex-col gap-2 ml-4">
@@ -1423,13 +1428,13 @@ function GodIsWithYouApp() {
       
       {notification && (<div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 ease-out animate-in fade-in slide-in-from-bottom-2"><div className="bg-stone-200/90 backdrop-blur-sm border border-stone-300 text-stone-600 text-sm font-bold py-3 px-6 rounded-full shadow-xl">{notification}</div></div>)}
       
-      {/* 彈出視窗 (Modal) */}
       {showModal && (
         <div className="fixed inset-0 z-40 bg-gray-900/40 backdrop-blur-sm flex justify-center items-end sm:items-center p-0 sm:p-4" onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
             <div className="bg-gray-50 w-full max-w-lg h-[90%] sm:h-auto sm:max-h-[90vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col">
+                {/* ★★★ 修改點 1：收藏標題顯示數量 ★★★ */}
                 <header className="flex justify-between items-center p-5 border-b border-gray-200 bg-white rounded-t-2xl sticky top-0">
                     <h2 className="text-xl font-bold text-gray-800">
-                        {activeTab === 'favorites' ? '我的收藏' : activeTab === 'history' ? '瀏覽歷史' : '設定與備份'}
+                        {activeTab === 'favorites' ? `我的收藏 (${favorites.length})` : activeTab === 'history' ? '瀏覽歷史' : '設定與備份'}
                     </h2>
                     <button onClick={() => setShowModal(false)} className="p-2 rounded-full text-gray-500 hover:bg-gray-100 transition-colors"><X className="w-6 h-6" /></button>
                 </header>
@@ -1478,6 +1483,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

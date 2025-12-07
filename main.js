@@ -1187,15 +1187,22 @@ function GodIsWithYouApp() {
     } catch (e) { console.error("Load failed:", e); }
 
     if (!isScripturesEmpty) {
-        initialIndex = Math.floor(Math.random() * SCRIPTURES.length);
+        // 修改：先讀取已看過的紀錄
+        const savedRecents = JSON.parse(localStorage.getItem('godsPromisesRecents') || '[]');
+        
+        // 修改：確保初始經文不重複 (嘗試避開最近的200筆)
+        let attempts = 0;
+        do {
+            initialIndex = Math.floor(Math.random() * SCRIPTURES.length);
+            attempts++;
+        } while (savedRecents.includes(initialIndex) && attempts < 500);
+
         setCurrentIndex(initialIndex);
         
-        setRecentIndices(prev => {
-            const currentRecents = JSON.parse(localStorage.getItem('godsPromisesRecents') || '[]');
-            const newRecents = [initialIndex, ...currentRecents];
-            if (newRecents.length > 200) newRecents.pop();
-            return newRecents;
-        });
+        // 修改：更新狀態
+        const newRecents = [initialIndex, ...savedRecents];
+        if (newRecents.length > 200) newRecents.pop();
+        setRecentIndices(newRecents);
         
         const initialVerse = SCRIPTURES[initialIndex];
         addToHistory(initialVerse); 
@@ -1634,6 +1641,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

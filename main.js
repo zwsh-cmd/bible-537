@@ -26,6 +26,7 @@ const Edit = (props) => <IconBase d={["M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14
 const Settings = (props) => <IconBase d={["M4 21v-7", "M4 10V3", "M12 21v-9", "M12 8V3", "M20 21v-5", "M20 12V3", "M1 14h6", "M9 8h6", "M17 16h6"]} {...props} />;
 const Download = (props) => <IconBase d={["M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", "M7 10l5 5 5-5", "M12 15V3"]} {...props} />;
 const Upload = (props) => <IconBase d={["M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", "M17 8l-5-5-5 5", "M12 3v12"]} {...props} />;
+const Eye = (props) => <IconBase d={["M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z", "M12 5c-3.866 0-7 3.134-7 7s3.134 7 7 7 7-3.134 7-7-3.134-7-7-7zm0 12c-2.761 0-5-2.239-5-5s2.239-5 5-5 5 2.239 5 5-2.239 5-5 5z", "M12 10c-1.105 0-2 .895-2 2s.895 2 2 2 2-.895 2-2-.895-2-2-2z"]} {...props} />;
          
 // === 1. 錯誤邊界組件 (防止 App 崩潰導致白屏) ===
 class ErrorBoundary extends React.Component {
@@ -1298,6 +1299,23 @@ function GodIsWithYouApp() {
     showNotification(isCurrentFavorite && !isJournalUnchanged ? "日記已更新並保存" : "已加入收藏");
   };
 
+// === v45 新增：將歷史經文暫時顯示於首頁 (不影響隨機進度) ===
+  const handleViewHistoryVerse = (historyVerse) => {
+    // 1. 在資料庫中找到這句經文的原始編號 (Index)
+    const index = SCRIPTURES.findIndex(s => s.text === historyVerse.text);
+    
+    if (index !== -1) {
+        // 2. 將首頁暫時切換為這句經文
+        setCurrentIndex(index);
+        // 3. 關閉彈出視窗，讓使用者看到首頁
+        setShowModal(false);
+        // 4. 回到頁面頂端
+        window.scrollTo(0, 0);
+    } else {
+        showNotification("資料庫中找不到此經文");
+    }
+  };
+    
 // === v39 新增：從歷史紀錄補收藏 ===
   const handleAddFromHistory = (historyVerse) => {
     // 檢查是否已經在收藏中 (避免重複)
@@ -1529,31 +1547,45 @@ function GodIsWithYouApp() {
                         const favVersion = isAlreadyFav ? favorites.find(f => f.text === hist.text) : null;
                         
                         return (
-                            <div key={hist.id} className="flex flex-col p-4 bg-white rounded-xl shadow-sm border border-gray-100 mb-3">
-                                <p className="text-sm font-medium text-gray-800">{hist.text}</p>
-                                <p className="text-xs text-gray-500 mt-1 italic">{hist.textEn}</p>
-                                <p className="text-xs text-gray-500 mt-2 font-medium">{hist.reference} <span className="text-gray-400 italic">({hist.referenceEn})</span></p>
+                            <div key={hist.id} className="flex flex-col p-4 bg-white rounded-xl shadow-sm border border-gray-100 mb-3 hover:border-stone-300 transition-colors">
+                                {/* 修改點 A: 點擊文字區域直接回首頁顯示 */}
+                                <div onClick={() => handleViewHistoryVerse(hist)} className="cursor-pointer group">
+                                    <p className="text-sm font-medium text-gray-800 group-hover:text-stone-600 transition-colors">{hist.text}</p>
+                                    <p className="text-xs text-gray-500 mt-1 italic">{hist.textEn}</p>
+                                    <p className="text-xs text-gray-500 mt-2 font-medium">{hist.reference} <span className="text-gray-400 italic">({hist.referenceEn})</span></p>
+                                </div>
                                 
                                 <div className="flex justify-between items-center mt-3 border-t border-gray-100 pt-2">
                                     <div className="flex items-center text-xs text-gray-400">
                                         <Clock className="w-3 h-3 mr-1" /><span className="font-mono">{formatDateTime(hist.timestamp)}</span>
                                     </div>
                                     
-                                    {!isAlreadyFav ? (
+                                    <div className="flex gap-2">
+                                        {/* 修改點 B: 新增「查看」按鈕 */}
                                         <button 
-                                            onClick={() => handleAddFromHistory(hist)} 
-                                            className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-stone-100 text-stone-600 hover:bg-stone-200 transition-colors"
+                                            onClick={() => handleViewHistoryVerse(hist)} 
+                                            className="p-1.5 rounded-full text-gray-400 hover:bg-stone-100 hover:text-stone-600 transition-colors"
+                                            title="在首頁顯示"
                                         >
-                                            <Heart className="w-3 h-3" /> 補收藏
+                                            <Eye className="w-4 h-4" />
                                         </button>
-                                    ) : (
-                                        <button 
-                                            onClick={() => handleEditClick(favVersion)} 
-                                            className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-white border border-stone-200 text-stone-500 hover:bg-stone-50 transition-colors"
-                                        >
-                                            <Edit className="w-3 h-3" /> 編輯回應
-                                        </button>
-                                    )}
+
+                                        {!isAlreadyFav ? (
+                                            <button 
+                                                onClick={() => handleAddFromHistory(hist)} 
+                                                className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-stone-100 text-stone-600 hover:bg-stone-200 transition-colors"
+                                            >
+                                                <Heart className="w-3 h-3" /> 補收藏
+                                            </button>
+                                        ) : (
+                                            <button 
+                                                onClick={() => handleEditClick(favVersion)} 
+                                                className="flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold bg-white border border-stone-200 text-stone-500 hover:bg-stone-50 transition-colors"
+                                            >
+                                                <Edit className="w-3 h-3" /> 編輯回應
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         );
@@ -1593,6 +1625,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

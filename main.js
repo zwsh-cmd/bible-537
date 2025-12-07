@@ -630,7 +630,6 @@ const formatDateTime = (dateInput) => {
 // 排版優化 V21：最終詞庫補完 (去重整理) + 雙層防護邏輯
 // 排版優化 V29：主畫面與圖片邏輯完全同步 (含完整詞庫 + 英文智慧平衡)
 // 排版優化 V30：中文詞庫分類整理 + 英文孤兒字終結 + 雙語同步
-// 排版優化 V30：中文詞庫分類整理 + 英文孤兒字終結 + 雙語同步
 const formatTextNoOrphan = (text) => {
     if (!text || typeof text !== 'string') return text;
 
@@ -658,7 +657,7 @@ const formatTextNoOrphan = (text) => {
         "洗淨", "充滿", "澆灌", "運行", "感動", "啟示", "光照", "鑒察", "潔淨", "脫離",
         "行道", "聽道", "欺哄", "論斷", "相愛", "彼此", "和睦", "同心", "同去", "同得", "聚集",
         "數點", "稱呼", "擦去", "過去", "留下", "賜給", "所賜", "跌倒", "臨近", "順利",
-        "隔絕", "活著", "安慰", "牧養", "增長", "陳明", "愛人如己", "以惡報惡", "奉我的名", "出死入生", "解開", "發出",
+        "隔絕", "活著", "安慰", "牧養", "增長", "陳明", "愛人如己", "以惡報惡", "奉我的名", "出死入生",
 
         // === [形容詞/副詞] 狀態/程度 ===
         "喜樂", "平安", "忍耐", "良善", "信實", "節制", "聖潔", "公義", "完全", "美好",
@@ -692,55 +691,47 @@ const formatTextNoOrphan = (text) => {
         });
     };
 
-    // 4. 強標點切割 (依據句號、驚嘆號等換行)
+    // 4. 強標點切割
     const strongParts = text.split(/([。？！：?!:][”’」』]?)/);
     const lines = [];
 
     for (let i = 0; i < strongParts.length; i += 2) {
         const segment = strongParts[i];
         const mark = strongParts[i + 1] || "";
-        let fullLine = segment + mark;
         
-        if (!fullLine) continue;
+        if (segment || mark) {
+            const fullLine = segment + mark;
+            
+            // 5. 弱標點切割 (含頓號、省略號)
+            const weakParts = fullLine.split(/(\.{3}|[，；、,;…][”’」』]?)/);
+            const blocks = [];
 
-        // === V50 修正邏輯：智慧懸掛 (負邊距版) ===
-        // 使用負邊距 (-1em) 來抵銷標點寬度，達到視覺置中，同時保留標點在原本行內的物理位置
-        const trailingRegex = /([，；、。？！：?!:;,.][”’」』]?)$/;
-        const match = fullLine.match(trailingRegex);
-        
-        let bodyText = fullLine;
-        let hangingPunctuation = null;
-
-        if (match) {
-            hangingPunctuation = match[1]; // 抓出句尾標點
-            bodyText = fullLine.substring(0, fullLine.length - hangingPunctuation.length); // 剩下的文字
-        }
-
-        // 處理主要文字
-        const segments = bodyText.split(wordRegex).filter(s => s !== "");
-        const blocks = segments.map((part, k) => {
-            if (keepTogetherWords.includes(part)) {
-                return <span key={k} className="whitespace-nowrap">{part}</span>;
-            }
-            return <span key={k}>{processDe(part)}</span>;
-        });
-
-        // 組合行
-        lines.push(
-            <div key={i} className="text-center relative inline-block">
-                {/* 主要文字 */}
-                {blocks}
+            for (let j = 0; j < weakParts.length; j += 2) {
+                const subText = weakParts[j];
+                const subMark = weakParts[j + 1] || "";
                 
-                {/* 句尾標點：使用負邊距使其「不佔寬度」但仍緊跟在後，修復跑位問題 */}
-                {hangingPunctuation && (
-                    <span className="whitespace-nowrap" style={{ marginRight: '-1em' }}>
-                        {hangingPunctuation}
-                    </span>
-                )}
-            </div>
-        );
+                if (subText || subMark) {
+                    // 6. 關鍵詞保護 + 「的」字處理
+                    const protectedParts = subText.split(wordRegex);
+                    const content = protectedParts.map((part, k) => {
+                        if (keepTogetherWords.includes(part)) {
+                            return <span key={k} className="whitespace-nowrap">{part}</span>;
+                        }
+                        return <span key={k}>{processDe(part)}</span>;
+                    });
+
+                    blocks.push(
+                        <span key={j} className="inline-block">
+                            {content}
+                            <span className="whitespace-nowrap">{subMark}</span>
+                        </span>
+                    );
+                }
+            }
+            lines.push(<div key={i} className="text-center">{blocks}</div>);
+        }
     }
-    return <div className="flex flex-col gap-1 items-center">{lines}</div>;
+    return <div className="flex flex-col gap-1">{lines}</div>;
 };
 
 // 英文排版 V30：孤兒字殺手 + 專有名詞保護
@@ -1136,7 +1127,7 @@ const EditJournalView = ({ editingVerse, setEditingVerse, onUpdate, maxLength })
       onClick={(e) => { if (e.target === e.currentTarget) setEditingVerse(null); }}
     >
         <div className="bg-white w-full max-w-lg h-[85%] sm:h-auto sm:max-h-[85vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:animate-in sm:zoom-in-95 duration-300">
-            <nav className="w-full flex justify-between items-center p-4 border-b border-gray-200 bg-white rounded-t-2xl">
+            <nav className="flex justify-between items-center p-4 border-b border-gray-200 bg-white rounded-t-2xl">
                 <button onClick={() => setEditingVerse(null)} className="text-gray-500 hover:text-gray-700 px-2 py-1 rounded-md">取消</button>
                 <h2 className="text-lg font-bold text-gray-800">編輯回應</h2>
                 <button onClick={onUpdate} className="text-white bg-stone-600 hover:bg-stone-700 px-4 py-1.5 rounded-full text-sm font-bold shadow-md">完成</button>
@@ -1399,7 +1390,9 @@ function GodIsWithYouApp() {
     setEditingVerse(null); showNotification("日記已更新");
   };
     
- 
+  // === 新增：滑動手勢偵測函式 ===
+  const minSwipeDistance = 50; // 至少要滑動 50px 才算數
+
   // === v43 優化：整合手勢偵測 (左滑 + 下拉) ===
   const onTouchStart = (e) => {
     setTouchCurrent(null);
@@ -1478,7 +1471,7 @@ function GodIsWithYouApp() {
 
       {editingVerse && <EditJournalView editingVerse={editingVerse} setEditingVerse={setEditingVerse} onUpdate={handleUpdateJournal} maxLength={MAX_JOURNAL_LENGTH} />}
 
-      <nav className="w-full flex justify-between items-center p-4 sm:p-6 bg-white/70 backdrop-blur-sm sticky top-0 z-10 border-b border-gray-200/50">
+      <nav className="flex justify-between items-center p-4 sm:p-6 bg-white/70 backdrop-blur-sm sticky top-0 z-10 border-b border-gray-200/50">
         <div className="flex items-center gap-3"><BookOpen className="w-6 h-6 text-gray-600" /><h1 className="text-xl font-bold text-gray-800 tracking-wide">神對我吹氣</h1></div>
         <div className='flex gap-2'>
             <button onClick={handleNextVerse} disabled={isAnimating} className="text-sm font-bold tracking-widest text-white bg-stone-600/90 hover:bg-stone-700 shadow-lg shadow-stone-300/50 px-5 py-2 rounded-full transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"><RefreshCw className={`w-4 h-4 mr-2 inline ${isAnimating ? 'animate-spin' : ''}`} /> 領受</button>
@@ -1486,13 +1479,13 @@ function GodIsWithYouApp() {
         </div>
       </nav>
 
-      <main className="flex flex-col px-4 sm:px-6 py-8 max-w-lg mx-auto w-full">
+      <main className="flex flex-col items-center px-4 sm:px-6 py-8 max-w-lg mx-auto w-full">
         <div className="w-full relative mb-6">
           <div 
             onTouchStart={onTouchStart} 
             onTouchMove={onTouchMove} 
             onTouchEnd={onTouchEnd}          
-            className="w-full relative bg-white rounded-2xl shadow-xl p-8 sm:p-10 border border-gray-200 min-h-[200px] flex items-center justify-center">
+            className="relative bg-white rounded-2xl shadow-xl p-8 sm:p-10 border border-gray-200 min-h-[200px] flex items-center justify-center">
             {currentVerse ? (
               <div className={`w-full transition-all duration-500 ease-out transform ${isAnimating ? 'opacity-0 translate-y-2 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}>
                 <div className="mb-6">
@@ -1632,12 +1625,6 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
-
-
-
-
-
-
 
 
 

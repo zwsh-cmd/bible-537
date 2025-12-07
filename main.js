@@ -1307,9 +1307,15 @@ function GodIsWithYouApp() {
     if (index !== -1) {
         // 2. 將首頁暫時切換為這句經文
         setCurrentIndex(index);
-        // 3. 關閉彈出視窗，讓使用者看到首頁
+        
+        // 3. (新增) 同步將回應內容填入輸入框
+        // 先嘗試從收藏夾找最新的，如果沒有才用傳進來的資料
+        const savedFav = favorites.find(f => f.text === historyVerse.text);
+        setJournalInput(savedFav ? (savedFav.journalEntry || "") : (historyVerse.journalEntry || ""));
+
+        // 4. 關閉彈出視窗
         setShowModal(false);
-        // 4. 回到頁面頂端
+        // 5. 回到頁面頂端
         window.scrollTo(0, 0);
     } else {
         showNotification("資料庫中找不到此經文");
@@ -1424,12 +1430,14 @@ function GodIsWithYouApp() {
     <div className="flex flex-col p-4 bg-white rounded-xl shadow-sm border border-gray-100 mb-3">
       <div className="flex justify-between items-start">
         <div className="flex-1 min-w-0 cursor-pointer group" onClick={() => onView(verse)}>
-          <p className="text-sm font-extrabold text-gray-800 leading-relaxed truncate-3-lines group-hover:text-stone-600 transition-colors">{verse.text}</p>
+          {/* 修改1：字體加大為 text-base */}
+          <p className="text-base font-extrabold text-gray-800 leading-relaxed truncate-3-lines group-hover:text-stone-600 transition-colors">{verse.text}</p>
           <p className="text-xs text-gray-500 mt-1 italic font-extrabold">{verse.textEn}</p>
           <p className="text-xs text-gray-500 mt-2 font-medium">{verse.reference} <span className="text-gray-400 italic">({verse.referenceEn})</span></p>
           <div className="flex items-center text-xs text-gray-400 mt-2"><Calendar className="w-3 h-3 mr-1" /><span className="font-mono">{formatDateTime(verse.timestamp)}</span></div>
         </div>
-        <div className="flex flex-col gap-2 ml-4">
+        {/* 修改2：排版改為 grid grid-cols-2 (2x2網格) */}
+        <div className="grid grid-cols-2 gap-2 ml-4">
             <TooltipButton onClick={() => onView(verse)} icon={Eye} label="在首頁顯示" />
             <TooltipButton onClick={() => onEdit(verse)} icon={Edit} label="編輯" />
             <TooltipButton onClick={() => onShare(verse)} icon={Share2} label="分享" />
@@ -1626,6 +1634,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

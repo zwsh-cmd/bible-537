@@ -1505,7 +1505,7 @@ function GodIsWithYouApp() {
                   <p className="text-sm font-medium tracking-widest uppercase">— {currentVerse.reference} —</p>
                   <p className="text-xs font-serif italic mt-1 text-gray-400">{currentVerse.referenceEn}</p>
                 </div>
-                <div className="flex justify-center items-center mt-4 pt-3 border-t border-gray-100 gap-4">
+                <div className="flex justify-center items-center mt-6 pt-6 border-t border-gray-100 gap-4">
                    <div className="flex gap-4">
                     <TooltipButton onClick={() => handleCopy(currentVerse.text, currentVerse.textEn, currentVerse.reference, currentVerse.referenceEn)} icon={Copy} label="複製" />
                     <TooltipButton onClick={handleShareImage} icon={Share2} label="分享圖片" />
@@ -1634,6 +1634,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

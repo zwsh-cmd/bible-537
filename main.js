@@ -691,48 +691,60 @@ const formatTextNoOrphan = (text) => {
         });
     };
 
-    // 4. 強標點切割
+    // 4. 強標點切割 (依據句號、驚嘆號等換行)
     const strongParts = text.split(/([。？！：?!:][”’」』]?)/);
     const lines = [];
 
     for (let i = 0; i < strongParts.length; i += 2) {
         const segment = strongParts[i];
         const mark = strongParts[i + 1] || "";
+        let fullLine = segment + mark;
         
-        if (segment || mark) {
-            const fullLine = segment + mark;
-            
-            // 5. 弱標點切割 (含頓號、省略號)
-            const weakParts = fullLine.split(/(\.{3}|[，；、,;…][”’」』]?)/);
-            const blocks = [];
+        if (!fullLine) continue;
 
-            for (let j = 0; j < weakParts.length; j += 2) {
-                const subText = weakParts[j];
-                const subMark = weakParts[j + 1] || "";
-                
-                if (subText || subMark) {
-                    // 6. 關鍵詞保護 + 「的」字處理
-                    const protectedParts = subText.split(wordRegex);
-                    const content = protectedParts.map((part, k) => {
-                        if (keepTogetherWords.includes(part)) {
-                            return <span key={k} className="whitespace-nowrap">{part}</span>;
-                        }
-                        return <span key={k}>{processDe(part)}</span>;
-                    });
+        // === V49 新邏輯：智慧懸掛 ===
+        // 1. 分離「句尾標點」與「主要文字」
+        // 只有出現在這一行「最後面」的標點，才需要懸掛 (不計入寬度)
+        const trailingRegex = /([，；、。？！：?!:;,.][”’」』]?)$/;
+        const match = fullLine.match(trailingRegex);
+        
+        let bodyText = fullLine;
+        let hangingPunctuation = null;
 
-                    blocks.push(
-                        <span key={j} className="inline-block relative">
-                            {content}
-                            {/* V48: 懸掛標點修正 - 讓標點符號絕對定位於文字右側，不影響置中對齊計算 */}
-                            <span className="whitespace-nowrap" style={{ position: 'absolute', top: 0, left: '100%' }}>{subMark}</span>
-                        </span>
-                    );
-                }
-            }
-            lines.push(<div key={i} className="text-center">{blocks}</div>);
+        if (match) {
+            hangingPunctuation = match[1]; // 抓出句尾標點
+            bodyText = fullLine.substring(0, fullLine.length - hangingPunctuation.length); // 剩下的文字
         }
+
+        // 2. 處理主要文字 (詞庫保護 + 句中標點正常顯示)
+        // 這裡不再對弱標點做特殊分割，讓它們自然排列，這樣「看哪，」的逗號就會有正常寬度
+        const segments = bodyText.split(wordRegex).filter(s => s !== "");
+        const blocks = segments.map((part, k) => {
+            // 如果是保護詞彙，不換行
+            if (keepTogetherWords.includes(part)) {
+                return <span key={k} className="whitespace-nowrap">{part}</span>;
+            }
+            // 處理「的」字
+            return <span key={k}>{processDe(part)}</span>;
+        });
+
+        // 3. 組合行 (使用 relative + inline-block 確保置中計算只包含 bodyText)
+        lines.push(
+            <div key={i} className="text-center relative inline-block">
+                {/* 主要文字 (由這裡決定視覺重心) */}
+                {blocks}
+                
+                {/* 句尾懸掛標點 (絕對定位，不影響置中) */}
+                {hangingPunctuation && (
+                    <span className="whitespace-nowrap" style={{ position: 'absolute', top: 0, left: '100%' }}>
+                        {hangingPunctuation}
+                    </span>
+                )}
+            </div>
+        );
     }
-    return <div className="flex flex-col gap-1">{lines}</div>;
+    // 外層容器加入 items-center 確保每一行 (inline-block) 在卡片中水平置中
+    return <div className="flex flex-col gap-1 items-center">{lines}</div>;
 };
 
 // 英文排版 V30：孤兒字殺手 + 專有名詞保護
@@ -1624,6 +1636,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

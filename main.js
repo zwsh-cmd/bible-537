@@ -1501,7 +1501,7 @@ function GodIsWithYouApp() {
                   <p className="text-2xl sm:text-3xl leading-relaxed text-gray-800 text-center tracking-wide text-balance mb-4 font-medium">{formatTextNoOrphan(currentVerse.text)}</p>
                   <p className="text-base sm:text-lg leading-relaxed text-gray-500 text-center font-serif italic break-words w-full max-w-full px-2">{formatEnglishTextNoOrphan(currentVerse.textEn)}</p>
                 </div>
-                <div className="flex flex-col items-center justify-center border-t border-gray-200 pt-3 text-gray-500">
+                <div className="flex flex-col items-center justify-center mt-8 border-t border-gray-200 pt-3 text-gray-500">
                   <p className="text-sm font-medium tracking-widest uppercase">— {currentVerse.reference} —</p>
                   <p className="text-xs font-serif italic mt-1 text-gray-400">{currentVerse.referenceEn}</p>
                 </div>
@@ -1634,6 +1634,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

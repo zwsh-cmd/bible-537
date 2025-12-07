@@ -657,7 +657,7 @@ const formatTextNoOrphan = (text) => {
         "洗淨", "充滿", "澆灌", "運行", "感動", "啟示", "光照", "鑒察", "潔淨", "脫離",
         "行道", "聽道", "欺哄", "論斷", "相愛", "彼此", "和睦", "同心", "同去", "同得", "聚集",
         "數點", "稱呼", "擦去", "過去", "留下", "賜給", "所賜", "跌倒", "臨近", "順利",
-        "隔絕", "活著", "安慰", "牧養", "增長", "陳明", "愛人如己", "以惡報惡", "奉我的名", "出死入生",
+        "隔絕", "活著", "安慰", "牧養", "增長", "陳明", "愛人如己", "以惡報惡", "奉我的名", "出死入生", "解開",
 
         // === [形容詞/副詞] 狀態/程度 ===
         "喜樂", "平安", "忍耐", "良善", "信實", "節制", "聖潔", "公義", "完全", "美好",
@@ -721,9 +721,10 @@ const formatTextNoOrphan = (text) => {
                     });
 
                     blocks.push(
-                        <span key={j} className="inline-block">
+                        <span key={j} className="inline-block relative">
                             {content}
-                            <span className="whitespace-nowrap">{subMark}</span>
+                            {/* V48: 懸掛標點修正 - 讓標點符號絕對定位於文字右側，不影響置中對齊計算 */}
+                            <span className="whitespace-nowrap" style={{ position: 'absolute', top: 0, left: '100%' }}>{subMark}</span>
                         </span>
                     );
                 }
@@ -1623,6 +1624,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

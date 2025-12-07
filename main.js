@@ -1127,7 +1127,7 @@ const EditJournalView = ({ editingVerse, setEditingVerse, onUpdate, maxLength })
       onClick={(e) => { if (e.target === e.currentTarget) setEditingVerse(null); }}
     >
         <div className="bg-white w-full max-w-lg h-[85%] sm:h-auto sm:max-h-[85vh] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col animate-in slide-in-from-bottom-4 sm:animate-in sm:zoom-in-95 duration-300">
-            <nav className="flex justify-between items-center p-4 border-b border-gray-200 bg-white rounded-t-2xl">
+            <nav className="w-full flex justify-between items-center p-4 border-b border-gray-200 bg-white rounded-t-2xl">
                 <button onClick={() => setEditingVerse(null)} className="text-gray-500 hover:text-gray-700 px-2 py-1 rounded-md">取消</button>
                 <h2 className="text-lg font-bold text-gray-800">編輯回應</h2>
                 <button onClick={onUpdate} className="text-white bg-stone-600 hover:bg-stone-700 px-4 py-1.5 rounded-full text-sm font-bold shadow-md">完成</button>
@@ -1479,7 +1479,7 @@ function GodIsWithYouApp() {
         </div>
       </nav>
 
-      <main className="flex flex-col items-center px-4 sm:px-6 py-8 max-w-lg mx-auto w-full">
+      <main className="flex flex-col px-4 sm:px-6 py-8 max-w-lg mx-auto w-full">
         <div className="w-full relative mb-6">
           <div 
             onTouchStart={onTouchStart} 
@@ -1625,6 +1625,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

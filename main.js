@@ -1390,9 +1390,7 @@ function GodIsWithYouApp() {
     setEditingVerse(null); showNotification("日記已更新");
   };
     
-  // === 新增：滑動手勢偵測函式 ===
-  const minSwipeDistance = 50; // 至少要滑動 50px 才算數
-
+ 
   // === v43 優化：整合手勢偵測 (左滑 + 下拉) ===
   const onTouchStart = (e) => {
     setTouchCurrent(null);
@@ -1471,7 +1469,7 @@ function GodIsWithYouApp() {
 
       {editingVerse && <EditJournalView editingVerse={editingVerse} setEditingVerse={setEditingVerse} onUpdate={handleUpdateJournal} maxLength={MAX_JOURNAL_LENGTH} />}
 
-      <nav className="flex justify-between items-center p-4 sm:p-6 bg-white/70 backdrop-blur-sm sticky top-0 z-10 border-b border-gray-200/50">
+      <nav className="w-full flex justify-between items-center p-4 sm:p-6 bg-white/70 backdrop-blur-sm sticky top-0 z-10 border-b border-gray-200/50">
         <div className="flex items-center gap-3"><BookOpen className="w-6 h-6 text-gray-600" /><h1 className="text-xl font-bold text-gray-800 tracking-wide">神對我吹氣</h1></div>
         <div className='flex gap-2'>
             <button onClick={handleNextVerse} disabled={isAnimating} className="text-sm font-bold tracking-widest text-white bg-stone-600/90 hover:bg-stone-700 shadow-lg shadow-stone-300/50 px-5 py-2 rounded-full transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"><RefreshCw className={`w-4 h-4 mr-2 inline ${isAnimating ? 'animate-spin' : ''}`} /> 領受</button>
@@ -1485,7 +1483,7 @@ function GodIsWithYouApp() {
             onTouchStart={onTouchStart} 
             onTouchMove={onTouchMove} 
             onTouchEnd={onTouchEnd}          
-            className="relative bg-white rounded-2xl shadow-xl p-8 sm:p-10 border border-gray-200 min-h-[200px] flex items-center justify-center">
+            className="w-full relative bg-white rounded-2xl shadow-xl p-8 sm:p-10 border border-gray-200 min-h-[200px] flex items-center justify-center">
             {currentVerse ? (
               <div className={`w-full transition-all duration-500 ease-out transform ${isAnimating ? 'opacity-0 translate-y-2 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}>
                 <div className="mb-6">
@@ -1625,6 +1623,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

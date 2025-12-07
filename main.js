@@ -1420,16 +1420,17 @@ function GodIsWithYouApp() {
   };
 
   // ★★★ 修改點 3：收藏列表顯示英文經文 ★★★
-  const VerseListItem = ({ verse, isFavorite, onRemove, onShare, onEdit }) => (
+  const VerseListItem = ({ verse, isFavorite, onRemove, onShare, onEdit, onView }) => (
     <div className="flex flex-col p-4 bg-white rounded-xl shadow-sm border border-gray-100 mb-3">
       <div className="flex justify-between items-start">
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-extrabold text-gray-800 leading-relaxed truncate-3-lines">{verse.text}</p>
+        <div className="flex-1 min-w-0 cursor-pointer group" onClick={() => onView(verse)}>
+          <p className="text-sm font-extrabold text-gray-800 leading-relaxed truncate-3-lines group-hover:text-stone-600 transition-colors">{verse.text}</p>
           <p className="text-xs text-gray-500 mt-1 italic font-extrabold">{verse.textEn}</p>
           <p className="text-xs text-gray-500 mt-2 font-medium">{verse.reference} <span className="text-gray-400 italic">({verse.referenceEn})</span></p>
           <div className="flex items-center text-xs text-gray-400 mt-2"><Calendar className="w-3 h-3 mr-1" /><span className="font-mono">{formatDateTime(verse.timestamp)}</span></div>
         </div>
         <div className="flex flex-col gap-2 ml-4">
+            <TooltipButton onClick={() => onView(verse)} icon={Eye} label="在首頁顯示" />
             <TooltipButton onClick={() => onEdit(verse)} icon={Edit} label="編輯" />
             <TooltipButton onClick={() => onShare(verse)} icon={Share2} label="分享" />
             {isFavorite && (<TooltipButton onClick={() => onRemove(verse.text)} icon={Trash2} label="移除" />)}
@@ -1541,7 +1542,7 @@ function GodIsWithYouApp() {
                 </div>
 
                 <div className="flex-1 p-4 overflow-y-auto custom-scrollbar">
-                    {activeTab === 'favorites' && (favorites.length > 0 ? favorites.map((fav) => (<VerseListItem key={fav.text} verse={fav} isFavorite={true} onRemove={handleRemoveFavorite} onShare={handleShareCollected} onEdit={handleEditClick} />)) : <div className="text-center py-10 text-gray-500"><Heart className="w-8 h-8 mx-auto mb-2 text-gray-400" /><p>您尚未收藏任何經文。</p></div>)}
+                    {activeTab === 'favorites' && (favorites.length > 0 ? favorites.map((fav) => (<VerseListItem key={fav.text} verse={fav} isFavorite={true} onRemove={handleRemoveFavorite} onShare={handleShareCollected} onEdit={handleEditClick} onView={handleViewHistoryVerse} onView={handleViewHistoryVerse}/>)) : <div className="text-center py-10 text-gray-500"><Heart className="w-8 h-8 mx-auto mb-2 text-gray-400" /><p>您尚未收藏任何經文。</p></div>)}
                     {activeTab === 'history' && (history.length > 0 ? history.map((hist) => {
                         const isAlreadyFav = favorites.some(f => f.text === hist.text);
                         const favVersion = isAlreadyFav ? favorites.find(f => f.text === hist.text) : null;
@@ -1625,6 +1626,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

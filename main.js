@@ -1430,8 +1430,8 @@ function GodIsWithYouApp() {
     <div className="flex flex-col p-4 bg-white rounded-xl shadow-sm border border-gray-100 mb-3">
       <div className="flex justify-between items-start">
         <div className="flex-1 min-w-0 cursor-pointer group" onClick={() => onView(verse)}>
-          {/* 修改1：字體加大為 text-base */}
-          <p className="text-base font-extrabold text-gray-800 leading-relaxed truncate-3-lines group-hover:text-stone-600 transition-colors">{verse.text}</p>
+          {/* 修改這裡：把 text-base 改成 text-lg */}
+          <p className="text-lg font-extrabold text-gray-800 leading-relaxed truncate-3-lines group-hover:text-stone-600 transition-colors">{verse.text}</p>
           <p className="text-xs text-gray-500 mt-1 italic font-extrabold">{verse.textEn}</p>
           <p className="text-xs text-gray-500 mt-2 font-medium">{verse.reference} <span className="text-gray-400 italic">({verse.referenceEn})</span></p>
           <div className="flex items-center text-xs text-gray-400 mt-2"><Calendar className="w-3 h-3 mr-1" /><span className="font-mono">{formatDateTime(verse.timestamp)}</span></div>
@@ -1488,7 +1488,7 @@ function GodIsWithYouApp() {
         </div>
       </nav>
 
-      <main className="flex flex-col items-center px-4 sm:px-6 py-8 max-w-lg mx-auto w-full">
+      <main className="flex flex-col items-center px-4 sm:px-6 py-4 max-w-lg mx-auto w-full">
         <div className="w-full relative mb-6">
           <div 
             onTouchStart={onTouchStart} 
@@ -1634,6 +1634,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

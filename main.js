@@ -630,6 +630,7 @@ const formatDateTime = (dateInput) => {
 // 排版優化 V21：最終詞庫補完 (去重整理) + 雙層防護邏輯
 // 排版優化 V29：主畫面與圖片邏輯完全同步 (含完整詞庫 + 英文智慧平衡)
 // 排版優化 V30：中文詞庫分類整理 + 英文孤兒字終結 + 雙語同步
+// 排版優化 V30：中文詞庫分類整理 + 英文孤兒字終結 + 雙語同步
 const formatTextNoOrphan = (text) => {
     if (!text || typeof text !== 'string') return text;
 
@@ -657,7 +658,7 @@ const formatTextNoOrphan = (text) => {
         "洗淨", "充滿", "澆灌", "運行", "感動", "啟示", "光照", "鑒察", "潔淨", "脫離",
         "行道", "聽道", "欺哄", "論斷", "相愛", "彼此", "和睦", "同心", "同去", "同得", "聚集",
         "數點", "稱呼", "擦去", "過去", "留下", "賜給", "所賜", "跌倒", "臨近", "順利",
-        "隔絕", "活著", "安慰", "牧養", "增長", "陳明", "愛人如己", "以惡報惡", "奉我的名", "出死入生", "解開",
+        "隔絕", "活著", "安慰", "牧養", "增長", "陳明", "愛人如己", "以惡報惡", "奉我的名", "出死入生", "解開", "發出",
 
         // === [形容詞/副詞] 狀態/程度 ===
         "喜樂", "平安", "忍耐", "良善", "信實", "節制", "聖潔", "公義", "完全", "美好",
@@ -702,9 +703,8 @@ const formatTextNoOrphan = (text) => {
         
         if (!fullLine) continue;
 
-        // === V49 新邏輯：智慧懸掛 ===
-        // 1. 分離「句尾標點」與「主要文字」
-        // 只有出現在這一行「最後面」的標點，才需要懸掛 (不計入寬度)
+        // === V50 修正邏輯：智慧懸掛 (負邊距版) ===
+        // 使用負邊距 (-1em) 來抵銷標點寬度，達到視覺置中，同時保留標點在原本行內的物理位置
         const trailingRegex = /([，；、。？！：?!:;,.][”’」』]?)$/;
         const match = fullLine.match(trailingRegex);
         
@@ -716,34 +716,30 @@ const formatTextNoOrphan = (text) => {
             bodyText = fullLine.substring(0, fullLine.length - hangingPunctuation.length); // 剩下的文字
         }
 
-        // 2. 處理主要文字 (詞庫保護 + 句中標點正常顯示)
-        // 這裡不再對弱標點做特殊分割，讓它們自然排列，這樣「看哪，」的逗號就會有正常寬度
+        // 處理主要文字
         const segments = bodyText.split(wordRegex).filter(s => s !== "");
         const blocks = segments.map((part, k) => {
-            // 如果是保護詞彙，不換行
             if (keepTogetherWords.includes(part)) {
                 return <span key={k} className="whitespace-nowrap">{part}</span>;
             }
-            // 處理「的」字
             return <span key={k}>{processDe(part)}</span>;
         });
 
-        // 3. 組合行 (使用 relative + inline-block 確保置中計算只包含 bodyText)
+        // 組合行
         lines.push(
             <div key={i} className="text-center relative inline-block">
-                {/* 主要文字 (由這裡決定視覺重心) */}
+                {/* 主要文字 */}
                 {blocks}
                 
-                {/* 句尾懸掛標點 (絕對定位，不影響置中) */}
+                {/* 句尾標點：使用負邊距使其「不佔寬度」但仍緊跟在後，修復跑位問題 */}
                 {hangingPunctuation && (
-                    <span className="whitespace-nowrap" style={{ position: 'absolute', top: 0, left: '100%' }}>
+                    <span className="whitespace-nowrap" style={{ marginRight: '-1em' }}>
                         {hangingPunctuation}
                     </span>
                 )}
             </div>
         );
     }
-    // 外層容器加入 items-center 確保每一行 (inline-block) 在卡片中水平置中
     return <div className="flex flex-col gap-1 items-center">{lines}</div>;
 };
 
@@ -1636,6 +1632,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 

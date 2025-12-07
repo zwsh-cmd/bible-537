@@ -1435,6 +1435,8 @@ function GodIsWithYouApp() {
             height: 100%; 
             margin: 0; 
             padding: 0;
+            overflow-x: hidden; /* 強制隱藏水平卷軸 */
+            max-width: 100vw;   /* 限制最大寬度為視窗寬度 */
           }
           #root {
             min-height: 100dvh;
@@ -1470,7 +1472,7 @@ function GodIsWithYouApp() {
               <div className={`w-full transition-all duration-500 ease-out transform ${isAnimating ? 'opacity-0 translate-y-2 scale-95' : 'opacity-100 translate-y-0 scale-100'}`}>
                 <div className="mb-6">
                   <p className="text-2xl sm:text-3xl leading-relaxed text-gray-800 text-center tracking-wide text-balance mb-4 font-medium">{formatTextNoOrphan(currentVerse.text)}</p>
-                  <p className="text-base sm:text-lg leading-relaxed text-gray-500 text-center font-serif italic text-balance">{formatEnglishTextNoOrphan(currentVerse.textEn)}</p>
+                  <p className="text-base sm:text-lg leading-relaxed text-gray-500 text-center font-serif italic break-words w-full max-w-full px-2">{formatEnglishTextNoOrphan(currentVerse.textEn)}</p>
                 </div>
                 <div className="flex flex-col items-center justify-center border-t border-gray-200 pt-3 text-gray-500">
                   <p className="text-sm font-medium tracking-widest uppercase">— {currentVerse.reference} —</p>
@@ -1591,6 +1593,7 @@ function GodIsWithYouApp() {
 const root = createRoot(document.getElementById('root'));
 
 root.render(<ErrorBoundary><GodIsWithYouApp /></ErrorBoundary>);
+
 
 
 
